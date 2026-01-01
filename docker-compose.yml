@@ -90,7 +90,7 @@ services:
     environment:
       - RAPIDAPI_KEY=${RAPIDAPI_KEY}
       - RAPIDAPI_HOST=${RAPIDAPI_HOST:-airbnb19.p.rapidapi.com}
-      - QUERY=${QUERY}
+      - PLACE_ID=${PLACE_ID}
       - MAX_LISTINGS=${MAX_LISTINGS:-4120}
       - MAX_IMAGES_PER_LISTING=${MAX_IMAGES_PER_LISTING:-20}
       - POSTGRES_HOST=postgres
@@ -104,6 +104,23 @@ services:
       - DATA_DIR=/app/data
     volumes:
       - ./data:/app/data
+    networks:
+      - real_estate_network
+
+  ui:
+    build: ./services/ui
+    container_name: real_estate_ui
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8501:8501"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-real_estate}
+      - POSTGRES_USER=${POSTGRES_USER:-mlops}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mlops123}
     networks:
       - real_estate_network
 

@@ -29,6 +29,22 @@ class DatabaseService:
             logger.error(f"Error connecting to PostgreSQL: {e}")
             raise
     
+    def get_existing_ids(self) -> set:
+        """Get set of all existing listing IDs from database"""
+        if not self.connection:
+            self.connect()
+        
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("SELECT id FROM listings")
+            existing_ids = {str(row[0]) for row in cursor.fetchall()}
+            cursor.close()
+            logger.info(f"Loaded {len(existing_ids)} existing listing IDs from database")
+            return existing_ids
+        except Exception as e:
+            logger.error(f"Error getting existing IDs: {e}")
+            return set()
+    
     def close(self):
         if self.connection:
             self.connection.close()

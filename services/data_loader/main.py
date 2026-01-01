@@ -39,15 +39,9 @@ class DataIngestionPipeline:
         
         listing_id = str(listing_data.get("id", "unknown"))
         
-        # Extract price from pricingQuote.structuredStayDisplayPrice.primaryLine.price
-        price = None
-        if "pricingQuote" in listing:
-            price_str = listing.get("pricingQuote", {}).get("structuredStayDisplayPrice", {}).get("primaryLine", {}).get("price")
-            if price_str:
-                try:
-                    price = float(price_str.replace("$", "").replace(",", "").strip())
-                except:
-                    pass
+        # Extract price per night (normalized to one night)
+        from price_extractor import extract_price_per_night
+        price = extract_price_per_night(listing)
         
         # Extract coordinates
         coord = listing_data.get("coordinate", listing_data.get("legacyCoordinate", {}))
@@ -147,8 +141,15 @@ class DataIngestionPipeline:
         try:
             self.database.connect()
             
-            listings = await self.api_client.fetch_all_listings(max_listings=max_listings)
-            logger.info(f"Fetched {len(listings)} listings from API")
+            # Load existing listing IDs from database to skip already processed ones
+            existing_ids = self.database.get_existing_ids()
+            logger.info(f"Found {len(existing_ids)} existing listings in database, will skip them")
+            
+            listings = await self.api_client.fetch_all_listings(
+                max_listings=max_listings,
+                existing_ids=existing_ids
+            )
+            logger.info(f"Fetched {len(listings)} new listings from API")
             
             for idx, listing in enumerate(listings, 1):
                 await self.process_listing(listing)
