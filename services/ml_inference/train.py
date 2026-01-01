@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 import sys
 import os
+from sklearn.model_selection import train_test_split
 
 from preprocessing import Preprocessor, prepare_data_for_training
 
@@ -43,6 +44,13 @@ def train_model(
     if y_test is not None:
         print(f"  Test  - Mean: ${y_test.mean():.2f}, Std: ${y_test.std():.2f}")
     
+    print("\nSplitting train set into train/validation for early stopping...")
+    X_train_split, X_val_split, y_train_split, y_val_split = train_test_split(
+        X_train, y_train, test_size=0.2, random_state=42
+    )
+    print(f"  Train split: {X_train_split.shape[0]} samples")
+    print(f"  Validation split: {X_val_split.shape[0]} samples")
+    
     print("\nTraining model...")
     
     try:
@@ -51,24 +59,21 @@ def train_model(
         print("Using CatBoost Regressor")
         
         model = CatBoostRegressor(
-            iterations=1000,
-            learning_rate=0.1,
-            depth=6,
+            iterations=500,
+            learning_rate=0.01,
+            depth=5,
+            l2_leaf_reg=10,
             loss_function='RMSE',
             eval_metric='RMSE',
             random_seed=42,
-            verbose=100,
-            early_stopping_rounds=50
+            verbose=100
         )
         
-        if X_test is not None and y_test is not None:
-            model.fit(
-                X_train, y_train,
-                eval_set=(X_test, y_test),
-                use_best_model=True
-            )
-        else:
-            model.fit(X_train, y_train)
+        model.fit(
+            X_train, y_train,
+            eval_set=(X_val_split, y_val_split),
+            use_best_model=False
+        )
         
         print("\nModel training completed!")
         
@@ -77,10 +82,20 @@ def train_model(
         train_mae = np.mean(np.abs(y_train - train_pred))
         train_mape = np.mean(np.abs((y_train - train_pred) / y_train)) * 100
         
-        print(f"\nTrain metrics:")
+        val_pred = model.predict(X_val_split)
+        val_rmse = np.sqrt(np.mean((y_val_split - val_pred) ** 2))
+        val_mae = np.mean(np.abs(y_val_split - val_pred))
+        val_mape = np.mean(np.abs((y_val_split - val_pred) / y_val_split)) * 100
+        
+        print(f"\nTrain metrics (full train set):")
         print(f"  RMSE: ${train_rmse:.2f}")
         print(f"  MAE: ${train_mae:.2f}")
         print(f"  MAPE: {train_mape:.2f}%")
+        
+        print(f"\nValidation metrics (for reference):")
+        print(f"  RMSE: ${val_rmse:.2f}")
+        print(f"  MAE: ${val_mae:.2f}")
+        print(f"  MAPE: {val_mape:.2f}%")
         
         if X_test is not None and y_test is not None:
             test_pred = model.predict(X_test)
@@ -88,7 +103,7 @@ def train_model(
             test_mae = np.mean(np.abs(y_test - test_pred))
             test_mape = np.mean(np.abs((y_test - test_pred) / y_test)) * 100
             
-            print(f"\nTest metrics:")
+            print(f"\nTest set metrics (holdout for retraining):")
             print(f"  RMSE: ${test_rmse:.2f}")
             print(f"  MAE: ${test_mae:.2f}")
             print(f"  MAPE: {test_mape:.2f}%")
