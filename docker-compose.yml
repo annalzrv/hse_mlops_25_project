@@ -107,12 +107,60 @@ services:
     networks:
       - real_estate_network
 
+  ml_inference:
+    build: ./services/ml_inference
+    container_name: real_estate_ml_inference
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-real_estate}
+      - POSTGRES_USER=${POSTGRES_USER:-mlops}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mlops123}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - MODEL_PATH=/app/models/model.cbm
+      - PREPROCESSOR_PATH=/app/models/preprocessor.pkl
+    networks:
+      - real_estate_network
+
+  ml_inference_consumer:
+    build: ./services/ml_inference
+    container_name: real_estate_ml_consumer
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      ml_inference:
+        condition: service_started
+    command: python run_consumer.py
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-real_estate}
+      - POSTGRES_USER=${POSTGRES_USER:-mlops}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mlops123}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - MODEL_PATH=/app/models/model.cbm
+      - PREPROCESSOR_PATH=/app/models/preprocessor.pkl
+    networks:
+      - real_estate_network
+    restart: unless-stopped
+
   ui:
     build: ./services/ui
     container_name: real_estate_ui
     depends_on:
       postgres:
         condition: service_healthy
+      ml_inference:
+        condition: service_started
     ports:
       - "8501:8501"
     environment:
@@ -121,6 +169,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-real_estate}
       - POSTGRES_USER=${POSTGRES_USER:-mlops}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mlops123}
+      - ML_INFERENCE_URL=http://ml_inference:8000
     networks:
       - real_estate_network
 

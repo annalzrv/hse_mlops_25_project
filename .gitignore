@@ -34,3 +34,7 @@ models/
 *.csv
 !*.csv.example
 
+# CatBoost training artifacts
+**/catboost_info/
+**/*training_log.txt
+

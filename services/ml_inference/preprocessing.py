@@ -66,8 +66,12 @@ class Preprocessor:
                 self.city_encoder.fit(X['city'])
                 X['city'] = self.city_encoder.transform(X['city'])
             else:
-                X['city'] = X['city'].map(lambda x: x if x in self.city_encoder.classes_ else 'Unknown')
-                X['city'] = self.city_encoder.transform(X['city'])
+                known_cities = set(self.city_encoder.classes_)
+                X['city'] = X['city'].apply(lambda x: x if x in known_cities else 'Unknown')
+                try:
+                    X['city'] = self.city_encoder.transform(X['city'])
+                except ValueError:
+                    X['city'] = 0
         
         if fit:
             X[numerical_cols] = self.scaler.fit_transform(X[numerical_cols])

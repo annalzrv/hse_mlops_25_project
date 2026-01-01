@@ -15,6 +15,7 @@
 2. **База данных**
    - ✅ PostgreSQL с расширением pgvector
    - ✅ Таблица listings с метаданными и векторными embeddings
+   - ✅ Таблица predictions для хранения предсказаний модели
    - ✅ Поддержка векторного поиска
 
 3. **Брокер сообщений**
@@ -48,14 +49,17 @@
 
 ### Дополнительные компоненты (минимум 2 из 5 для 8-10 баллов)
 
-#### 1. ML-сервис инференса ⚠️ КРИТИЧНО
-**Статус:** НЕ РЕАЛИЗОВАН
-**Что нужно:**
-- Сервис для предсказания цен на недвижимость
-- Использование метаданных + CLIP embeddings
-- Чтение из Kafka топика `new_listings`
-- Инференс модели (CatBoost/XGBoost/Neural Network)
-- Отправка предсказаний в другой Kafka топик или БД
+#### 1. ML-сервис инференса ✅
+**Статус:** РЕАЛИЗОВАН
+**Что реализовано:**
+- ✅ FastAPI сервис для предсказания цен на недвижимость
+- ✅ Использование метаданных + CLIP embeddings
+- ✅ Kafka consumer для чтения из топика `new_listings`
+- ✅ Инференс модели CatBoost
+- ✅ Сохранение предсказаний в таблицу `predictions` в PostgreSQL
+- ✅ HTTP API эндпоинты: `/predict`, `/health`, `/predictions`
+- ✅ Docker контейнер для сервиса
+- ✅ Интеграция с docker-compose.yml
 
 **Приоритет:** ВЫСОКИЙ (это один из обязательных пунктов для 10 баллов)
 
@@ -141,11 +145,32 @@
 
 ## 📝 Следующие шаги
 
-1. Остановить data_loader (когда соберем достаточно данных ~1000-2000 листингов)
-2. Обучить ML модель на собранных данных
-3. Создать ML inference сервис
-4. Создать Streamlit UI
-5. Добавить Grafana мониторинг
-6. Обновить README с бизнес-ценностью и архитектурой
-7. Создать one-pager презентацию
+1. ✅ Обучить ML модель на собранных данных
+2. ✅ Создать ML inference сервис
+3. ⚠️ Расширить Streamlit UI для инференса (сейчас только загрузка данных)
+4. ⚠️ Добавить Grafana мониторинг
+5. ⚠️ Обновить README с архитектурной схемой
+6. ✅ Создать one-pager презентацию (ONEPAGER.md)
+
+## 📦 Реализованные компоненты ML Inference Service
+
+### Структура файлов:
+- `services/ml_inference/app.py` - FastAPI сервис
+- `services/ml_inference/predictor.py` - Класс для загрузки модели и предсказаний
+- `services/ml_inference/kafka_consumer.py` - Kafka consumer для обработки новых листингов
+- `services/ml_inference/database.py` - Сервис для работы с БД
+- `services/ml_inference/feature_extractor.py` - Извлечение фичей из данных листинга
+- `services/ml_inference/run_consumer.py` - Скрипт для запуска Kafka consumer
+- `services/ml_inference/Dockerfile` - Docker образ для сервиса
+
+### API эндпоинты:
+- `GET /health` - Healthcheck
+- `POST /predict` - Предсказание цены (по listing_id или raw data)
+- `GET /predictions` - История предсказаний
+
+### Kafka Consumer:
+- Читает из топика `new_listings`
+- Загружает данные листинга из PostgreSQL
+- Делает предсказание через модель
+- Сохраняет результат в таблицу `predictions`
 
