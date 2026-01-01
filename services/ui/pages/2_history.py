@@ -5,8 +5,6 @@ from utils.ml_client import MLInferenceClient
 from utils.database import DatabaseService
 from utils.formatters import format_price
 
-st.set_page_config(page_title="Predictions History", page_icon="scroll", layout="wide")
-
 st.title("Predictions History")
 st.markdown("View history of price predictions")
 

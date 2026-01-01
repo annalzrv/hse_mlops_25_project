@@ -5,8 +5,6 @@ from utils.ml_client import MLInferenceClient
 from utils.database import DatabaseService
 from utils.formatters import format_price
 
-st.set_page_config(page_title="Analytics", page_icon="chart", layout="wide")
-
 st.title("Analytics Dashboard")
 
 if 'ml_client' not in st.session_state:

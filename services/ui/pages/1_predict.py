@@ -4,8 +4,6 @@ from utils.ml_client import MLInferenceClient
 from utils.image_processor import ImageProcessor
 from utils.formatters import format_price
 
-st.set_page_config(page_title="Predict Price", page_icon="dollar", layout="wide")
-
 st.title("Predict Price")
 st.markdown("Get a price prediction for a real estate listing")
 

@@ -1,8 +1,6 @@
 import streamlit as st
 from utils.ml_client import MLInferenceClient
 
-st.set_page_config(page_title="API Documentation", page_icon="satellite", layout="wide")
-
 st.title("API Documentation")
 st.markdown("Explore the ML Inference API endpoints")
 
