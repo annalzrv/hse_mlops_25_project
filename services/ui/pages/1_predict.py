@@ -4,9 +4,9 @@ from utils.ml_client import MLInferenceClient
 from utils.image_processor import ImageProcessor
 from utils.formatters import format_price
 
-st.set_page_config(page_title="Predict Price", page_icon="💰", layout="wide")
+st.set_page_config(page_title="Predict Price", page_icon="dollar", layout="wide")
 
-st.title("💰 Predict Price")
+st.title("Predict Price")
 st.markdown("Get a price prediction for a real estate listing")
 
 if 'ml_client' not in st.session_state:
@@ -114,7 +114,4 @@ if submit:
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### API Documentation")
-swagger_url = st.session_state.ml_client.get_swagger_url()
-st.sidebar.markdown(f"[Open Swagger UI]({swagger_url})")
-st.sidebar.info("Use the Swagger UI to explore the ML API endpoints.")
-
+st.sidebar.markdown("[Open Swagger UI](http://localhost:8000/docs)")

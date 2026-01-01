@@ -3,14 +3,14 @@ from utils.ml_client import MLInferenceClient
 
 st.set_page_config(
     page_title="Real Estate Price Prediction",
-    page_icon="🏠",
+    page_icon="house",
     layout="wide"
 )
 
 if 'ml_client' not in st.session_state:
     st.session_state.ml_client = MLInferenceClient()
 
-st.title("🏠 Real Estate Price Prediction System")
+st.title("Real Estate Price Prediction System")
 
 st.markdown("""
 Welcome to the **Multimodal Real Estate Price Prediction** system.
@@ -19,30 +19,29 @@ This MLOps platform predicts rental prices based on property images and metadata
 
 st.markdown("---")
 
-st.header("Quick Navigation")
+st.header("Navigation")
 
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    st.subheader("💰 Predict Price")
-    st.markdown("Get instant price predictions for listings")
-    st.page_link("pages/1_predict.py", label="Go to Predictions", icon="💰")
+    st.subheader("Predict Price")
+    st.markdown("Get instant price predictions")
+    st.page_link("pages/1_predict.py", label="Go to Predictions")
 
 with col2:
-    st.subheader("📜 History")
-    st.markdown("View past predictions and trends")
-    st.page_link("pages/2_history.py", label="View History", icon="📜")
+    st.subheader("History")
+    st.markdown("View past predictions")
+    st.page_link("pages/2_history.py", label="View History")
 
 with col3:
-    st.subheader("📊 Analytics")
-    st.markdown("Analyze prediction data with charts")
-    st.page_link("pages/3_analytics.py", label="Open Analytics", icon="📊")
+    st.subheader("Analytics")
+    st.markdown("Analyze data with charts")
+    st.page_link("pages/3_analytics.py", label="Open Analytics")
 
-st.markdown("---")
-
-st.subheader("📡 API Documentation")
-st.markdown("Explore the REST API endpoints and Swagger UI")
-st.page_link("pages/4_api.py", label="API Docs", icon="📡")
+with col4:
+    st.subheader("API Docs")
+    st.markdown("REST API documentation")
+    st.page_link("pages/4_api.py", label="API Docs")
 
 st.markdown("---")
 

@@ -1,9 +1,9 @@
 import streamlit as st
 from utils.ml_client import MLInferenceClient
 
-st.set_page_config(page_title="API Documentation", page_icon="📡", layout="wide")
+st.set_page_config(page_title="API Documentation", page_icon="satellite", layout="wide")
 
-st.title("📡 API Documentation")
+st.title("API Documentation")
 st.markdown("Explore the ML Inference API endpoints")
 
 if 'ml_client' not in st.session_state:
@@ -127,4 +127,3 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### Quick Links")
 st.sidebar.markdown("- [Swagger UI](http://localhost:8000/docs)")
 st.sidebar.markdown("- [ReDoc](http://localhost:8000/redoc)")
-

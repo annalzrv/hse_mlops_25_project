@@ -1,13 +1,13 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from utils.ml_client import MLInferenceClient
 from utils.database import DatabaseService
 from utils.formatters import format_price
 
-st.set_page_config(page_title="Predictions History", page_icon="📜", layout="wide")
+st.set_page_config(page_title="Predictions History", page_icon="scroll", layout="wide")
 
-st.title("📜 Predictions History")
+st.title("Predictions History")
 st.markdown("View history of price predictions")
 
 if 'ml_client' not in st.session_state:
@@ -84,4 +84,3 @@ if predictions:
 else:
     st.info("No predictions found. Make some predictions first!")
     st.markdown("Go to the **Predict Price** page to make predictions.")
-
