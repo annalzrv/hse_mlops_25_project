@@ -138,7 +138,7 @@ docker-compose up -d postgres zookeeper kafka
 docker-compose up data_loader
 ```
 
-### Локальный запуск (для тестирования на Mac M4)
+### Локальный запуск (Apple Silicon)
 
 1. Установите зависимости:
 ```bash
@@ -280,7 +280,7 @@ ls -la data/images/
 
 ## Производительность
 
-Оптимизации для M4 Pro Max:
+Оптимизации для Apple Silicon:
 - Использование MPS backend для CLIP модели
 - Высокий уровень concurrency (50 для скачивания изображений)
 - Batch processing для эффективного использования памяти

@@ -55,7 +55,7 @@ docker-compose exec kafka kafka-console-consumer \
 find data/images -name "*.jpg" | wc -l
 ```
 
-## Локальный запуск (Mac M4)
+## Локальный запуск (Apple Silicon)
 
 Если хотите запустить локально для использования MPS:
 
