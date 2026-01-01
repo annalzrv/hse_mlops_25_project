@@ -19,16 +19,17 @@ st.markdown("---")
 
 st.header("Interactive API Documentation")
 
-swagger_url = st.session_state.ml_client.get_swagger_url()
-st.markdown(f"""
+st.markdown("""
 The ML Inference Service provides a **Swagger UI** for interactive API documentation.
 
-**[Open Swagger UI]({swagger_url})**
+**[Open Swagger UI](http://localhost:8000/docs)** (opens in new tab)
 
 This allows you to:
 - View all available API endpoints
 - See request/response schemas
 - Test API calls directly from the browser
+
+> Note: Swagger UI is available at `http://localhost:8000/docs` when running locally.
 """)
 
 st.markdown("---")
@@ -124,6 +125,6 @@ st.code(st.session_state.ml_client.base_url)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### Quick Links")
-st.sidebar.markdown(f"- [Swagger UI]({swagger_url})")
-st.sidebar.markdown(f"- [ReDoc]({st.session_state.ml_client.base_url}/redoc)")
+st.sidebar.markdown("- [Swagger UI](http://localhost:8000/docs)")
+st.sidebar.markdown("- [ReDoc](http://localhost:8000/redoc)")
 

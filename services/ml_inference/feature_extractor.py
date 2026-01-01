@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, Optional
-import re
 from math import radians, sin, cos, sqrt, atan2
 
 
@@ -50,11 +49,13 @@ def calculate_location_features(lat: Optional[float], lng: Optional[float]) -> D
 
 
 def extract_embedding_features(embedding: np.ndarray) -> Dict[str, float]:
-    if embedding is None or embedding.size != 512:
+    if embedding is None or (hasattr(embedding, 'size') and embedding.size == 0):
         return {f'embedding_{i}': 0.0 for i in range(512)}
     
-    if embedding.ndim > 1:
+    if hasattr(embedding, 'ndim') and embedding.ndim > 1:
         embedding = embedding.flatten()
+    
+    embedding = np.array(embedding)
     
     if len(embedding) != 512:
         padded = np.zeros(512, dtype=np.float32)
@@ -70,25 +71,40 @@ def prepare_features_from_listing(
     city: Optional[str] = None,
     num_reviews: Optional[int] = None
 ) -> pd.DataFrame:
-    features = {
-        'rating': float(listing_data.get('rating', 0.0)) if listing_data.get('rating') is not None else 0.0,
-        'has_rating': 1.0 if listing_data.get('rating') is not None and listing_data.get('rating', 0) > 0 else 0.0,
-        'num_reviews': float(num_reviews) if num_reviews is not None else 0.0,
-        'has_reviews': 1.0 if num_reviews is not None and num_reviews > 0 else 0.0,
-        'city': city if city else 'Unknown'
-    }
+    """
+    Prepare features in the exact order expected by the preprocessor.
+    Order: rating, has_rating, num_reviews, has_reviews, city,
+           embedding_0..511, name_length, name_word_count, has_mention_*,
+           lat, lng, distance_to_center_la, distance_to_center_nyc
+    """
+    features = {}
+    
+    rating = listing_data.get('rating')
+    features['rating'] = float(rating) if rating is not None else 0.0
+    features['has_rating'] = 1.0 if rating is not None and rating > 0 else 0.0
+    features['num_reviews'] = float(num_reviews) if num_reviews is not None else 0.0
+    features['has_reviews'] = 1.0 if num_reviews is not None and num_reviews > 0 else 0.0
+    features['city'] = city if city else 'Unknown'
+    
+    embedding_features = extract_embedding_features(embedding)
+    for i in range(512):
+        features[f'embedding_{i}'] = embedding_features[f'embedding_{i}']
     
     text_features = extract_text_features(listing_data.get('name'))
-    features.update(text_features)
+    features['name_length'] = text_features['name_length']
+    features['name_word_count'] = text_features['name_word_count']
+    features['has_mention_of_luxury'] = text_features['has_mention_of_luxury']
+    features['has_mention_of_beach'] = text_features['has_mention_of_beach']
+    features['has_mention_of_pool'] = text_features['has_mention_of_pool']
+    features['has_mention_of_parking'] = text_features['has_mention_of_parking']
     
     location_features = calculate_location_features(
         listing_data.get('lat'),
         listing_data.get('lng')
     )
-    features.update(location_features)
-    
-    embedding_features = extract_embedding_features(embedding)
-    features.update(embedding_features)
+    features['lat'] = location_features['lat']
+    features['lng'] = location_features['lng']
+    features['distance_to_center_la'] = location_features['distance_to_center_la']
+    features['distance_to_center_nyc'] = location_features['distance_to_center_nyc']
     
     return pd.DataFrame([features])
-

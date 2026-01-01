@@ -40,17 +40,9 @@ with col3:
 
 st.markdown("---")
 
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("📤 Upload Listing")
-    st.markdown("Add new listings with images")
-    st.page_link("pages/4_upload.py", label="Upload Data", icon="📤")
-
-with col2:
-    st.subheader("📡 API Documentation")
-    st.markdown("Explore the REST API endpoints")
-    st.page_link("pages/5_api.py", label="API Docs", icon="📡")
+st.subheader("📡 API Documentation")
+st.markdown("Explore the REST API endpoints and Swagger UI")
+st.page_link("pages/4_api.py", label="API Docs", icon="📡")
 
 st.markdown("---")
 
