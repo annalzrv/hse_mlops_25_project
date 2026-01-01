@@ -125,11 +125,14 @@ class DatabaseService:
             
             predictions = []
             for row in rows:
+                created_at = row[3]
+                if created_at is not None:
+                    created_at = created_at.isoformat()
                 predictions.append({
                     'id': row[0],
                     'listing_id': row[1],
                     'predicted_price': row[2],
-                    'created_at': row[3],
+                    'created_at': created_at,
                     'model_version': row[4]
                 })
             

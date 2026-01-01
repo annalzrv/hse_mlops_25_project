@@ -38,13 +38,13 @@
 - **Python 3.12** - основной язык разработки
 - **PostgreSQL 16** + **pgvector** - база данных с векторным поиском
 - **Kafka** (Confluent) - брокер сообщений для асинхронной обработки
-- **FastAPI** (планируется) - ML inference service
+- **FastAPI** - ML inference service
 - **Docker & Docker Compose** - контейнеризация
 
 ### ML/AI
 - **OpenAI CLIP** (ViT-B/32) - извлечение визуальных признаков
 - **PyTorch** - фреймворк для ML
-- **CatBoost/XGBoost** (планируется) - модель предсказания цен
+- **CatBoost** - модель предсказания цен
 - **MPS** (Apple Silicon) - GPU acceleration для обработки изображений
 
 ### Frontend & Monitoring
@@ -67,10 +67,10 @@
 - **Хранение:** 1,000+ листингов с embeddings
 - **Векторный поиск:** < 100ms для топ-10 похожих объектов
 
-### Целевые метрики ML-модели (планируется)
-- **MAPE (Mean Absolute Percentage Error):** <10%
-- **MAE (Mean Absolute Error):** < $5/night
-- **Время инференса:** < 2 секунды на запрос
+### Метрики ML-модели
+- **Model:** CatBoost Regressor
+- **Время инференса:** < 100ms на запрос
+- **Features:** CLIP embeddings + метаданные
 - **Throughput:** 100+ запросов/минуту
 
 ---
@@ -98,51 +98,44 @@
 
 ---
 
-## ✅ Статус реализации
+## Статус реализации
 
-### Реализовано ✅
-- ✅ Data ingestion pipeline (Airbnb API → CLIP → PostgreSQL)
-- ✅ PostgreSQL + pgvector для векторного поиска
-- ✅ Kafka для асинхронной обработки
-- ✅ Docker Compose инфраструктура
-- ✅ Обработка 1,000+ листингов с изображениями
-
-### В разработке 🚧
-- 🚧 ML inference service (предсказание цен)
-- 🚧 Streamlit UI (интерфейс для пользователей)
-- 🚧 Grafana мониторинг (метрики и дашборды)
+### Все компоненты реализованы
+- Data ingestion pipeline (Airbnb API, CLIP, PostgreSQL)
+- PostgreSQL + pgvector для векторного поиска
+- Kafka для асинхронной обработки
+- ML inference service (CatBoost + FastAPI)
+- Streamlit UI (инференс, аналитика, история)
+- Grafana мониторинг (дашборды)
 
 ---
 
-## 🚀 Быстрый старт
+## Быстрый старт
 
 ```bash
-# 1. Клонировать репозиторий
+# 1. Клонировать и настроить
 git clone <repository-url>
 cd project
-
-# 2. Настроить .env файл
 cp .env.example .env
-# Заполнить RAPIDAPI_KEY
 
-# 3. Запустить систему
+# 2. Запустить все сервисы
 docker-compose up -d
 
-# 4. Запустить data loader
-docker-compose up data_loader
-
-# 5. Доступ к UI (после реализации)
-# http://localhost:8501
+# 3. Открыть интерфейсы
+# UI: http://localhost:8501
+# API: http://localhost:8000/docs
+# Grafana: http://localhost:3000 (admin/admin)
 ```
 
 ---
 
-## Документация
+## Веб-интерфейсы
 
-- **README.md** - полная документация проекта
-- **QUICKSTART.md** - быстрый старт
-- **UI_PLAN.md** - план реализации UI
-- **PROJECT_STATUS.md** - текущий статус и план работ
+| Сервис | URL | Описание |
+|--------|-----|----------|
+| Streamlit UI | localhost:8501 | Инференс и аналитика |
+| ML API | localhost:8000 | FastAPI + Swagger |
+| Grafana | localhost:3000 | Мониторинг метрик |
 
 ---
 

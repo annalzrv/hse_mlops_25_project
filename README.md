@@ -49,11 +49,44 @@ End-to-end MLOps система, которая собирает данные о
 
 ## Архитектура
 
+```mermaid
+graph TB
+    subgraph DataCollection [Data Collection Layer]
+        API[Airbnb API] --> DL[Data Loader]
+        DL --> CLIP[CLIP Processor]
+        CLIP --> EMB[Embeddings]
+    end
+    
+    subgraph Storage [Storage Layer]
+        EMB --> PG[(PostgreSQL + pgvector)]
+        DL --> PG
+        DL --> KF[Kafka]
+    end
+    
+    subgraph ML [ML Layer]
+        KF --> MLC[ML Consumer]
+        MLC --> PRED[Predictions]
+        PRED --> PG
+        MLS[ML Inference API] --> PG
+    end
+    
+    subgraph Frontend [Presentation Layer]
+        UI[Streamlit UI] --> MLS
+        UI --> PG
+        GF[Grafana] --> PG
+    end
 ```
-Airbnb API → Data Loader → Image Processing (CLIP) → PostgreSQL (pgvector) → Kafka
-                              ↓
-                          Local Storage
-```
+
+### Компоненты системы
+
+| Компонент | Описание | Порт |
+|-----------|----------|------|
+| Data Loader | Сбор данных из Airbnb API, обработка изображений через CLIP | - |
+| PostgreSQL | База данных с pgvector для векторного поиска | 5433 |
+| Kafka | Брокер сообщений для асинхронной обработки | 9093 |
+| ML Inference | FastAPI сервис для предсказания цен | 8000 |
+| Streamlit UI | Веб-интерфейс для инференса и аналитики | 8501 |
+| Grafana | Дашборды для мониторинга | 3000 |
 
 ## Требования
 
@@ -130,23 +163,30 @@ project/
 ├── docker-compose.yml
 ├── .env.example
 ├── README.md
-├── requirements.txt
+├── ONEPAGER.md              # описание проекта на 1 странице
+├── PROJECT_STATUS.md        # статус реализации
 ├── services/
-│   └── data_loader/
-│       ├── Dockerfile
-│       ├── main.py
-│       ├── api_client.py
-│       ├── image_downloader.py
-│       ├── image_processor.py
-│       ├── embedding_aggregator.py
-│       ├── database.py
-│       ├── kafka_producer.py
-│       └── logger.py
+│   ├── data_loader/         # сбор данных из API
+│   │   ├── main.py
+│   │   ├── api_client.py
+│   │   ├── image_processor.py
+│   │   └── ...
+│   ├── ml_inference/        # ML сервис
+│   │   ├── app.py           # FastAPI
+│   │   ├── predictor.py
+│   │   ├── models/          # обученные модели
+│   │   └── ...
+│   └── ui/                  # Streamlit UI
+│       ├── app.py
+│       └── pages/           # страницы UI
+├── grafana/                 # конфигурация Grafana
+│   ├── provisioning/
+│   └── dashboards/
 ├── scripts/
 │   └── init_db.sql
 └── data/
-    ├── raw/          # JSON ответы от API
-    └── images/       # Скачанные изображения
+    ├── raw/                 # JSON ответы от API
+    └── images/              # скачанные изображения
 ```
 
 ## Компоненты
@@ -274,44 +314,43 @@ print(torch.backends.mps.is_available())
 ### Нехватка памяти
 Уменьшите `MAX_IMAGES_PER_LISTING` или `MAX_LISTINGS` в `.env`
 
-## Архитектура системы
+## Веб-интерфейсы
 
+После запуска доступны:
+
+- **Streamlit UI**: http://localhost:8501 - главный интерфейс для инференса и аналитики
+- **ML API Swagger**: http://localhost:8000/docs - документация REST API
+- **Grafana**: http://localhost:3000 - мониторинг (admin/admin)
+
+## Быстрый старт
+
+```bash
+# 1. Клонировать репозиторий
+git clone <repository-url>
+cd project
+
+# 2. Создать .env файл
+cp .env.example .env
+# Заполнить RAPIDAPI_KEY
+
+# 3. Запустить все сервисы
+docker-compose up -d
+
+# 4. Открыть UI
+open http://localhost:8501
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Airbnb API │────▶│ Data Loader  │────▶│ PostgreSQL  │────▶│ Kafka Topic │
-│             │     │  (CLIP)      │     │  (pgvector) │     │             │
-└─────────────┘     └──────────────┘     └──────┬──────┘     └──────┬──────┘
-                                                  │                   │
-                                                  ▼                   ▼
-                                         ┌──────────────┐     ┌──────────────┐
-                                         │ ML Inference │◀────│  Streamlit   │
-                                         │   Service    │     │      UI      │
-                                         └──────┬───────┘     └──────────────┘
-                                                │
-                                                ▼
-                                         ┌──────────────┐
-                                         │   Grafana    │
-                                         │  Monitoring  │
-                                         └──────────────┘
-```
 
-**Компоненты:**
-1. **Data Loader** - сбор и обработка данных (CLIP embeddings)
-2. **PostgreSQL + pgvector** - хранение данных и векторный поиск
-3. **Kafka** - асинхронная обработка данных
-4. **ML Inference Service** - предсказание цен (в разработке)
-5. **Streamlit UI** - веб-интерфейс (в разработке)
-6. **Grafana** - мониторинг метрик (в разработке)
+## Статус проекта
 
-## Следующие шаги
+Все компоненты реализованы:
+- ✅ Data Loader с CLIP embeddings
+- ✅ PostgreSQL с pgvector
+- ✅ Kafka для асинхронной обработки
+- ✅ ML Inference Service (CatBoost)
+- ✅ Streamlit UI с аналитикой
+- ✅ Grafana мониторинг
 
-После успешного сбора данных:
-1. ✅ Обучить мультимодальную модель для предсказания цен
-2. ✅ Создать ML сервис для инференса
-3. ✅ Разработать UI для взаимодействия с моделью
-4. ✅ Настроить мониторинг в Grafana
-
-Текущий статус реализации смотрите в [PROJECT_STATUS.md](PROJECT_STATUS.md)
+Подробный статус: [PROJECT_STATUS.md](PROJECT_STATUS.md)
 
 ## Лицензия
 

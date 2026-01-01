@@ -1,9 +1,5 @@
 import streamlit as st
-import numpy as np
-from typing import Dict, List, Optional
-from utils.database import DatabaseService
-from utils.image_processor import ImageProcessor
-from utils.formatters import format_price, format_rating, format_coordinates
+from utils.ml_client import MLInferenceClient
 
 st.set_page_config(
     page_title="Real Estate Price Prediction",
@@ -11,151 +7,82 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🏠 Real Estate Listing Upload")
+if 'ml_client' not in st.session_state:
+    st.session_state.ml_client = MLInferenceClient()
 
-if 'image_processor' not in st.session_state:
-    try:
-        with st.spinner("Loading CLIP model..."):
-            st.session_state.image_processor = ImageProcessor()
-        st.success("CLIP model loaded successfully")
-    except Exception as e:
-        st.error(f"Failed to load CLIP model: {str(e)}")
-        st.session_state.image_processor = None
+st.title("🏠 Real Estate Price Prediction System")
 
-if 'database' not in st.session_state:
-    st.session_state.database = DatabaseService()
+st.markdown("""
+Welcome to the **Multimodal Real Estate Price Prediction** system.
+This MLOps platform predicts rental prices based on property images and metadata.
+""")
 
-st.sidebar.title("Navigation")
-st.sidebar.info("Upload real estate listings with images and metadata")
+st.markdown("---")
 
-with st.form("listing_form", clear_on_submit=False):
-    st.header("Listing Information")
-    
-    col1, col2 = st.columns(2)
-    
-    autofill_listing_id = st.session_state.get('autofill_listing_id', '')
-    autofill_name = st.session_state.get('autofill_name', '')
-    autofill_price = st.session_state.get('autofill_price', None)
-    autofill_lat = st.session_state.get('autofill_lat', None)
-    autofill_lng = st.session_state.get('autofill_lng', None)
-    autofill_rating = st.session_state.get('autofill_rating', None)
-    
-    with col1:
-        listing_id = st.text_input("Listing ID *", value=autofill_listing_id, placeholder="e.g., 12345678")
-        name = st.text_input("Name", value=autofill_name, placeholder="e.g., Beautiful apartment in downtown")
-        price = st.number_input("Price ($)", min_value=0.0, value=autofill_price, step=1.0)
-    
-    with col2:
-        lat = st.number_input("Latitude", min_value=-90.0, max_value=90.0, value=autofill_lat, step=0.000001, format="%.6f")
-        lng = st.number_input("Longitude", min_value=-180.0, max_value=180.0, value=autofill_lng, step=0.000001, format="%.6f")
-        rating = st.number_input("Rating", min_value=0.0, max_value=5.0, value=autofill_rating, step=0.1)
-    
-    st.header("Upload Images")
-    uploaded_files = st.file_uploader(
-        "Select images (JPG, PNG)",
-        type=['jpg', 'jpeg', 'png'],
-        accept_multiple_files=True,
-        help="Upload one or more images of the property"
-    )
-    
-    if uploaded_files:
-        st.info(f"Uploaded {len(uploaded_files)} image(s)")
-        cols = st.columns(min(3, len(uploaded_files)))
-        for idx, uploaded_file in enumerate(uploaded_files[:3]):
-            with cols[idx % 3]:
-                st.image(uploaded_file, caption=uploaded_file.name, use_container_width=True)
-    
-    col_submit, col_autofill = st.columns([1, 1])
-    
-    with col_submit:
-        submit_button = st.form_submit_button("💾 Save Listing", type="primary", use_container_width=True)
-    
-    with col_autofill:
-        autofill_clicked = st.form_submit_button("🎲 Auto-fill (Test)", use_container_width=True)
+st.header("Quick Navigation")
 
-if autofill_clicked:
-    st.session_state.autofill_listing_id = "test_listing_001"
-    st.session_state.autofill_name = "Luxury Beachfront Apartment"
-    st.session_state.autofill_price = 250.0
-    st.session_state.autofill_lat = 34.0522
-    st.session_state.autofill_lng = -118.2437
-    st.session_state.autofill_rating = 4.5
-    st.rerun()
+col1, col2, col3 = st.columns(3)
 
-if submit_button:
-    if not listing_id:
-        st.error("❌ Listing ID is required!")
-    elif not uploaded_files and st.session_state.image_processor:
-        st.warning("⚠️ No images uploaded. Listing will be saved with zero embedding.")
-    
-    if listing_id:
-        try:
-            metadata = {
-                "name": name if name else None,
-                "price": float(price) if price is not None else None,
-                "lat": float(lat) if lat is not None else None,
-                "lng": float(lng) if lng is not None else None,
-                "rating": float(rating) if rating is not None else None
-            }
-            
-            embedding = None
-            if uploaded_files and st.session_state.image_processor:
-                try:
-                    with st.spinner("Processing images..."):
-                        image_bytes_list = [file.read() for file in uploaded_files]
-                        embedding = st.session_state.image_processor.process_images(image_bytes_list)
-                    if embedding is not None:
-                        st.success(f"✅ Processed {len(uploaded_files)} image(s). Embedding shape: {embedding.shape}")
-                except Exception as e:
-                    st.warning(f"⚠️ Image processing failed: {str(e)}. Saving without embedding.")
-                    embedding = np.zeros(512, dtype=np.float32)
-            
-            if embedding is None:
-                embedding = np.zeros(512, dtype=np.float32)
-                st.info("ℹ️ Using zero embedding (no images or model unavailable)")
-            
-            with st.spinner("Saving to database..."):
-                success, message = st.session_state.database.save_listing(
-                    listing_id=listing_id,
-                    metadata=metadata,
-                    embedding=embedding
-                )
-            
-            if success:
-                st.success(f"✅ {message}")
-                
-                st.header("Saved Listing Details")
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    st.metric("Listing ID", listing_id)
-                    st.metric("Price", format_price(metadata.get("price")))
-                
-                with col2:
-                    st.metric("Rating", format_rating(metadata.get("rating")))
-                    st.metric("Coordinates", format_coordinates(metadata.get("lat"), metadata.get("lng")))
-                
-                with col3:
-                    st.metric("Name", metadata.get("name") or "N/A")
-                    if embedding is not None:
-                        st.metric("Embedding Norm", f"{np.linalg.norm(embedding):.4f}")
-                
-                if uploaded_files:
-                    st.header("Uploaded Images")
-                    cols = st.columns(min(4, len(uploaded_files)))
-                    for idx, uploaded_file in enumerate(uploaded_files):
-                        with cols[idx % 4]:
-                            st.image(uploaded_file, caption=uploaded_file.name, use_container_width=True)
-            
-            else:
-                st.error(f"❌ {message}")
-                
-        except Exception as e:
-            st.error(f"❌ Unexpected error: {str(e)}")
+with col1:
+    st.subheader("💰 Predict Price")
+    st.markdown("Get instant price predictions for listings")
+    st.page_link("pages/1_predict.py", label="Go to Predictions", icon="💰")
+
+with col2:
+    st.subheader("📜 History")
+    st.markdown("View past predictions and trends")
+    st.page_link("pages/2_history.py", label="View History", icon="📜")
+
+with col3:
+    st.subheader("📊 Analytics")
+    st.markdown("Analyze prediction data with charts")
+    st.page_link("pages/3_analytics.py", label="Open Analytics", icon="📊")
+
+st.markdown("---")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("📤 Upload Listing")
+    st.markdown("Add new listings with images")
+    st.page_link("pages/4_upload.py", label="Upload Data", icon="📤")
+
+with col2:
+    st.subheader("📡 API Documentation")
+    st.markdown("Explore the REST API endpoints")
+    st.page_link("pages/5_api.py", label="API Docs", icon="📡")
+
+st.markdown("---")
+
+st.header("System Status")
+
+health = st.session_state.ml_client.health_check()
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    if health.get("status") == "healthy":
+        st.success("ML Service: Online")
+    else:
+        st.error("ML Service: Offline")
+
+with col2:
+    if health.get("model_loaded"):
+        st.success("Model: Loaded")
+    else:
+        st.warning("Model: Not loaded")
+
+with col3:
+    st.info("Database: PostgreSQL")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### About")
 st.sidebar.markdown("""
-This tool allows you to upload real estate listings with metadata and images.
-Images are processed using CLIP to generate embeddings for similarity search.
+**Multimodal Real Estate Price Prediction**
+
+Predicts rental prices using:
+- Property images (CLIP embeddings)
+- Location data
+- Property metadata
+
+Built with FastAPI, Kafka, PostgreSQL, and Streamlit.
 """)
