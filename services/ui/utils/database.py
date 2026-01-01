@@ -162,3 +162,83 @@ class DatabaseService:
             return [{'rating_range': r[0], 'count': r[1], 'avg_price': r[2]} for r in rows]
         except Exception:
             return []
+    
+    def get_listings_by_region(self):
+        """Get listings grouped by region (LA vs NYC based on coordinates)"""
+        if not self.connection:
+            if not self.connect():
+                return []
+        
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                SELECT 
+                    CASE 
+                        WHEN lng < -100 THEN 'Los Angeles Area'
+                        ELSE 'New York Area'
+                    END as region,
+                    COUNT(*) as count,
+                    AVG(price) as avg_price,
+                    MIN(price) as min_price,
+                    MAX(price) as max_price
+                FROM listings
+                WHERE price IS NOT NULL AND lat IS NOT NULL AND lng IS NOT NULL
+                GROUP BY region
+                ORDER BY region
+            """)
+            rows = cursor.fetchall()
+            cursor.close()
+            return [{'region': r[0], 'count': r[1], 'avg_price': r[2], 'min_price': r[3], 'max_price': r[4]} for r in rows]
+        except Exception:
+            return []
+    
+    def get_listings_locations(self):
+        """Get lat, lng, price for map visualization"""
+        if not self.connection:
+            if not self.connect():
+                return []
+        
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                SELECT lat, lng, price, name
+                FROM listings
+                WHERE price IS NOT NULL AND lat IS NOT NULL AND lng IS NOT NULL
+                LIMIT 1000
+            """)
+            rows = cursor.fetchall()
+            cursor.close()
+            return [{'lat': r[0], 'lng': r[1], 'price': r[2], 'name': r[3]} for r in rows]
+        except Exception:
+            return []
+    
+    def get_price_ranges(self):
+        """Get listings grouped by price range"""
+        if not self.connection:
+            if not self.connect():
+                return []
+        
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                SELECT 
+                    CASE 
+                        WHEN price < 100 THEN '$0-100'
+                        WHEN price < 200 THEN '$100-200'
+                        WHEN price < 300 THEN '$200-300'
+                        WHEN price < 500 THEN '$300-500'
+                        WHEN price < 1000 THEN '$500-1000'
+                        ELSE '$1000+'
+                    END as price_range,
+                    COUNT(*) as count,
+                    AVG(price) as avg_price
+                FROM listings
+                WHERE price IS NOT NULL
+                GROUP BY price_range
+                ORDER BY MIN(price)
+            """)
+            rows = cursor.fetchall()
+            cursor.close()
+            return [{'price_range': r[0], 'count': r[1], 'avg_price': r[2]} for r in rows]
+        except Exception:
+            return []

@@ -1,7 +1,6 @@
 import streamlit as st
 import numpy as np
 from utils.ml_client import MLInferenceClient
-from utils.image_processor import ImageProcessor
 from utils.formatters import format_price
 
 st.title("Predict Price")
@@ -10,11 +9,8 @@ st.markdown("Get a price prediction for a real estate listing")
 if 'ml_client' not in st.session_state:
     st.session_state.ml_client = MLInferenceClient()
 
-if 'image_processor' not in st.session_state:
-    try:
-        st.session_state.image_processor = ImageProcessor()
-    except Exception:
-        st.session_state.image_processor = None
+# ImageProcessor is loaded lazily only when user uploads images
+# This avoids loading the heavy CLIP model on page load
 
 health = st.session_state.ml_client.health_check()
 if health.get("status") == "healthy":
@@ -81,14 +77,25 @@ if submit:
     }
     
     embedding = None
-    if uploaded_images and st.session_state.image_processor:
-        with st.spinner("Processing images..."):
-            try:
-                image_bytes = [f.read() for f in uploaded_images]
-                embedding = st.session_state.image_processor.process_images(image_bytes)
-                embedding = embedding.tolist() if embedding is not None else None
-            except Exception as e:
-                st.warning(f"Image processing failed: {e}")
+    if uploaded_images:
+        with st.spinner("Loading image processor (first time may take a moment)..."):
+            # Lazy load ImageProcessor only when images are uploaded
+            if 'image_processor' not in st.session_state:
+                try:
+                    from utils.image_processor import ImageProcessor
+                    st.session_state.image_processor = ImageProcessor()
+                except Exception as e:
+                    st.warning(f"Could not load image processor: {e}")
+                    st.session_state.image_processor = None
+        
+        if st.session_state.get('image_processor'):
+            with st.spinner("Processing images..."):
+                try:
+                    image_bytes = [f.read() for f in uploaded_images]
+                    embedding = st.session_state.image_processor.process_images(image_bytes)
+                    embedding = embedding.tolist() if embedding is not None else None
+                except Exception as e:
+                    st.warning(f"Image processing failed: {e}")
     
     with st.spinner("Getting prediction..."):
         try:

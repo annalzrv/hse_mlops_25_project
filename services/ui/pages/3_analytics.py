@@ -90,7 +90,9 @@ with tab2:
     with st.spinner("Loading listings data..."):
         stats = st.session_state.database.get_listings_stats()
         prices = st.session_state.database.get_listings_price_distribution()
-        by_rating = st.session_state.database.get_listings_by_rating()
+        by_region = st.session_state.database.get_listings_by_region()
+        locations = st.session_state.database.get_listings_locations()
+        price_ranges = st.session_state.database.get_price_ranges()
     
     if stats:
         col1, col2, col3, col4 = st.columns(4)
@@ -115,12 +117,12 @@ with tab2:
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("Actual Price Distribution")
+            st.subheader("Price Distribution")
             if prices:
                 fig = px.histogram(
                     x=prices, nbins=30,
-                    title="Distribution of Actual Prices",
-                    labels={'x': 'Price ($)'}
+                    title="Distribution of Listing Prices",
+                    labels={'x': 'Price ($)', 'count': 'Count'}
                 )
                 fig.update_layout(showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
@@ -128,26 +130,70 @@ with tab2:
                 st.info("No price data available")
         
         with col2:
-            st.subheader("Listings by Rating")
-            if by_rating:
-                rating_df = pd.DataFrame(by_rating)
+            st.subheader("Listings by Region")
+            if by_region:
+                region_df = pd.DataFrame(by_region)
                 fig = px.bar(
-                    rating_df, x='rating_range', y='count',
-                    title="Number of Listings by Rating",
-                    labels={'rating_range': 'Rating Range', 'count': 'Count'}
+                    region_df, x='region', y='count',
+                    title="Number of Listings by Region",
+                    labels={'region': 'Region', 'count': 'Count'},
+                    color='region',
+                    color_discrete_map={'Los Angeles Area': '#FF6B6B', 'New York Area': '#4ECDC4'}
                 )
+                fig.update_layout(showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.info("No rating data available")
+                st.info("No region data available")
         
-        if by_rating:
-            st.subheader("Average Price by Rating")
-            rating_df = pd.DataFrame(by_rating)
-            fig = px.bar(
-                rating_df, x='rating_range', y='avg_price',
-                title="Average Price by Rating Range",
-                labels={'rating_range': 'Rating Range', 'avg_price': 'Avg Price ($)'}
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Average Price by Region")
+            if by_region:
+                region_df = pd.DataFrame(by_region)
+                fig = px.bar(
+                    region_df, x='region', y='avg_price',
+                    title="Average Price by Region",
+                    labels={'region': 'Region', 'avg_price': 'Avg Price ($)'},
+                    color='region',
+                    color_discrete_map={'Los Angeles Area': '#FF6B6B', 'New York Area': '#4ECDC4'}
+                )
+                fig.update_layout(showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No region data available")
+        
+        with col2:
+            st.subheader("Listings by Price Range")
+            if price_ranges:
+                price_df = pd.DataFrame(price_ranges)
+                fig = px.bar(
+                    price_df, x='price_range', y='count',
+                    title="Number of Listings by Price Range",
+                    labels={'price_range': 'Price Range', 'count': 'Count'}
+                )
+                fig.update_layout(showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No price range data available")
+        
+        if locations:
+            st.subheader("Price Map")
+            st.markdown("Prices visualized by location (size = price)")
+            loc_df = pd.DataFrame(locations)
+            fig = px.scatter_mapbox(
+                loc_df, 
+                lat='lat', lon='lng', 
+                size='price',
+                color='price',
+                hover_name='name',
+                hover_data={'price': ':$.2f', 'lat': ':.4f', 'lng': ':.4f'},
+                color_continuous_scale='Viridis',
+                zoom=3,
+                height=500,
+                title="Listings Map (bubble size = price)"
             )
+            fig.update_layout(mapbox_style="carto-positron")
             st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No listings data available in the database.")
