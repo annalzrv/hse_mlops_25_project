@@ -169,7 +169,7 @@ python3 services/data_loader/detail_parser.py --data-dir ./data
 python3 services/data_loader/detail_image_downloader.py --data-dir ./data
 
 # 4. Generate training dataset with PCA
-python3 scripts/prepare_training_dataset.py --output data/training_dataset_v3.parquet
+python3 scripts/prepare_training_dataset.py --output data/training_dataset_v4.parquet
 
 # 5. Split and train
 python3 -c "from sklearn.model_selection import train_test_split; ..."
@@ -180,19 +180,22 @@ cd services/ml_inference && python3 train.py ...
 
 ## Планы развития
 
-### Краткосрочные (v3.1)
+### Краткосрочные (v4.1)
 - [ ] Расширение географии: London, Paris, Miami
 - [ ] Feature engineering: price/bedroom ratios, neighborhood stats
+- [ ] Увеличение датасета до 2,000+ листингов
 
-### Среднесрочные (v4.0)
+### Среднесрочные (v5.0)
 - [ ] Airflow DAG для автоматического обновления
 - [ ] Model Registry (MLflow) для версионирования
 - [ ] Drift detection и автоматический retrain
+- [ ] Увеличение датасета до 5,000+ листингов
 
 ### Метрики успеха
-| Метрика | v3.0 | Цель |
+| Метрика | v4.0 | Цель |
 |---------|------|------|
-| MAPE | 52% | < 25% |
-| Metadata importance | 45% | > 50% |
-| City coverage | 99% | 100% |
-| Listings | 713 | 5,000+ |
+| MAPE | 60.1% | < 25% |
+| Metadata importance | 79.2% | > 80% |
+| City coverage | 99.9% | 100% |
+| Listings | 711 | 5,000+ |
+| Features (selected) | 40 | 50+ |
