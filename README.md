@@ -329,9 +329,9 @@ print(torch.backends.mps.is_available())
 git clone <repository-url>
 cd project
 
-# 2. Создать .env файл
-cp .env.example .env
-# Заполнить RAPIDAPI_KEY
+# 2. (Опционально) Создать .env файл для сбора новых данных
+# cp .env.example .env
+# Для запуска с существующими данными .env не нужен
 
 # 3. Запустить все сервисы
 docker-compose up -d

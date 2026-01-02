@@ -88,9 +88,9 @@ services:
       kafka-setup:
         condition: service_completed_successfully
     environment:
-      - RAPIDAPI_KEY=${RAPIDAPI_KEY}
+      - RAPIDAPI_KEY=${RAPIDAPI_KEY:-}
       - RAPIDAPI_HOST=${RAPIDAPI_HOST:-airbnb19.p.rapidapi.com}
-      - PLACE_ID=${PLACE_ID}
+      - PLACE_ID=${PLACE_ID:-}
       - MAX_LISTINGS=${MAX_LISTINGS:-4120}
       - MAX_IMAGES_PER_LISTING=${MAX_IMAGES_PER_LISTING:-20}
       - POSTGRES_HOST=postgres
