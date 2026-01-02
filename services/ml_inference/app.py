@@ -95,10 +95,12 @@ async def predict(request: PredictionRequest):
             
             listing_data = listing_result['listing']
             embedding = listing_result['embedding']
+            amenities = listing_result.get('amenities', set())
             
             predicted_price = predictor.predict(
                 listing_data,
-                embedding=embedding
+                embedding=embedding,
+                amenities=amenities
             )
             
             if db_service:

@@ -7,13 +7,18 @@ from pathlib import Path
 from dotenv import load_dotenv
 from typing import Dict, List
 import json
+import joblib
+from sklearn.decomposition import PCA
 
 load_dotenv()
 
-def get_db_connection():
+# PCA configuration
+PCA_N_COMPONENTS = 50
+
+def get_db_connection(host: str = None, port: str = None):
     conn = psycopg2.connect(
-        host=os.getenv("POSTGRES_HOST", "postgres"),
-        port=os.getenv("POSTGRES_PORT", "5432"),
+        host=host or os.getenv("POSTGRES_HOST", "localhost"),
+        port=port or os.getenv("POSTGRES_PORT", "5433"),
         database=os.getenv("POSTGRES_DB", "real_estate"),
         user=os.getenv("POSTGRES_USER", "mlops"),
         password=os.getenv("POSTGRES_PASSWORD", "mlops123")
@@ -136,11 +141,42 @@ def calculate_location_features(lat: float, lng: float) -> Dict[str, float]:
         'distance_to_center_nyc': haversine_distance(lat, lng, nyc_center[0], nyc_center[1])
     }
 
-def prepare_dataset(output_path: str = "data/training_dataset.parquet"):
+def get_amenities_for_listing(conn, listing_id: str) -> Dict[str, float]:
+    """Get amenity binary features for a listing"""
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT amenity_name FROM listing_amenities WHERE listing_id = %s",
+        (listing_id,)
+    )
+    amenities = {row[0].lower() for row in cursor.fetchall()}
+    cursor.close()
+    
+    # Define key amenities to extract as features
+    key_amenities = [
+        'wifi', 'kitchen', 'washer', 'dryer', 'air conditioning', 'heating',
+        'tv', 'pool', 'hot tub', 'gym', 'elevator', 'parking',
+        'smoke alarm', 'carbon monoxide alarm', 'fire extinguisher',
+        'dishwasher', 'refrigerator', 'microwave', 'oven', 'coffee maker',
+        'self check-in', 'lockbox', 'keypad', 'smart lock',
+        'beach access', 'waterfront', 'lake access',
+        'patio or balcony', 'backyard', 'garden',
+        'crib', 'high chair', 'pets allowed'
+    ]
+    
+    features = {}
+    for amenity in key_amenities:
+        feature_name = f"has_{amenity.replace(' ', '_').replace('-', '_')}"
+        features[feature_name] = 1.0 if amenity in amenities else 0.0
+    
+    return features
+
+
+def prepare_dataset(output_path: str = "data/training_dataset.parquet", db_host: str = None, db_port: str = None):
     print("Connecting to database...")
-    conn = get_db_connection()
+    conn = get_db_connection(host=db_host, port=db_port)
     
     print("Loading data from database...")
+    # Updated query to include new detailed fields
     query = """
         SELECT 
             id,
@@ -150,7 +186,22 @@ def prepare_dataset(output_path: str = "data/training_dataset.parquet"):
             name,
             rating,
             embedding::text as embedding,
-            created_at
+            created_at,
+            -- New detailed fields
+            property_type,
+            room_type,
+            person_capacity,
+            bedrooms,
+            beds,
+            bathrooms,
+            cleanliness_rating,
+            location_rating,
+            value_rating,
+            communication_rating,
+            checkin_rating,
+            accuracy_rating,
+            review_count,
+            details_fetched_at
         FROM listings
         WHERE price IS NOT NULL
         AND embedding IS NOT NULL
@@ -159,17 +210,19 @@ def prepare_dataset(output_path: str = "data/training_dataset.parquet"):
     """
     
     df = pd.read_sql_query(query, conn)
-    conn.close()
     
     print(f"Loaded {len(df)} records from database")
+    enriched_count = df['details_fetched_at'].notna().sum()
+    print(f"  - {enriched_count} listings have enriched details")
     
-    raw_data_dir = Path("data/raw")
+    raw_data_dir = Path("data/raw/search")
     if not raw_data_dir.exists():
         print(f"Warning: Raw data directory {raw_data_dir} not found. City extraction will be skipped.")
         raw_data_dir = None
     
     if len(df) == 0:
         print("No data found! Cannot create training dataset.")
+        conn.close()
         return
     
     print("Extracting features...")
@@ -184,15 +237,66 @@ def prepare_dataset(output_path: str = "data/training_dataset.parquet"):
         if raw_data_dir:
             city, num_reviews = extract_city_and_reviews_from_raw_json(row['id'], raw_data_dir)
         
+        # Use review_count from detailed data if available
+        if pd.notna(row.get('review_count')):
+            num_reviews = int(row['review_count'])
+        
+        # Use overall rating from detailed data if available (guestSatisfactionOverall)
+        rating_val = row['rating']
+        if pd.isna(rating_val) and pd.notna(row.get('cleanliness_rating')):
+            # Compute average from detailed ratings if overall rating is missing
+            detailed_ratings = [
+                row.get('cleanliness_rating'),
+                row.get('location_rating'),
+                row.get('value_rating'),
+                row.get('communication_rating'),
+                row.get('checkin_rating'),
+                row.get('accuracy_rating')
+            ]
+            valid_ratings = [r for r in detailed_ratings if pd.notna(r)]
+            if valid_ratings:
+                rating_val = np.mean(valid_ratings)
+        
         features = {
             'id': row['id'],
             'price': float(row['price']),
-            'rating': float(row['rating']) if pd.notna(row['rating']) else 0.0,
-            'has_rating': 1.0 if pd.notna(row['rating']) else 0.0,
+            'rating': float(rating_val) if pd.notna(rating_val) else 0.0,
+            'has_rating': 1.0 if pd.notna(rating_val) and rating_val > 0 else 0.0,
             'num_reviews': float(num_reviews) if num_reviews is not None else 0.0,
             'has_reviews': 1.0 if num_reviews is not None and num_reviews > 0 else 0.0,
             'city': city if city else 'Unknown'
         }
+        
+        # Add new detailed features
+        features['person_capacity'] = float(row['person_capacity']) if pd.notna(row.get('person_capacity')) else 0.0
+        features['bedrooms'] = float(row['bedrooms']) if pd.notna(row.get('bedrooms')) else 0.0
+        features['beds'] = float(row['beds']) if pd.notna(row.get('beds')) else 0.0
+        features['bathrooms'] = float(row['bathrooms']) if pd.notna(row.get('bathrooms')) else 0.0
+        
+        # Detailed ratings
+        features['cleanliness_rating'] = float(row['cleanliness_rating']) if pd.notna(row.get('cleanliness_rating')) else 0.0
+        features['location_rating'] = float(row['location_rating']) if pd.notna(row.get('location_rating')) else 0.0
+        features['value_rating'] = float(row['value_rating']) if pd.notna(row.get('value_rating')) else 0.0
+        features['communication_rating'] = float(row['communication_rating']) if pd.notna(row.get('communication_rating')) else 0.0
+        features['checkin_rating'] = float(row['checkin_rating']) if pd.notna(row.get('checkin_rating')) else 0.0
+        features['accuracy_rating'] = float(row['accuracy_rating']) if pd.notna(row.get('accuracy_rating')) else 0.0
+        
+        # Property type encoding (binary features)
+        property_type = str(row.get('property_type', '')).lower()
+        features['is_entire_place'] = 1.0 if 'entire' in property_type else 0.0
+        features['is_private_room'] = 1.0 if 'private room' in property_type else 0.0
+        features['is_shared_room'] = 1.0 if 'shared' in property_type else 0.0
+        features['is_hotel'] = 1.0 if 'hotel' in property_type else 0.0
+        
+        # Room type
+        room_type = str(row.get('room_type', '')).lower()
+        features['room_type_entire'] = 1.0 if 'entire' in room_type else 0.0
+        features['room_type_private'] = 1.0 if 'private' in room_type else 0.0
+        features['room_type_shared'] = 1.0 if 'shared' in room_type else 0.0
+        
+        # Add amenity features
+        amenity_features = get_amenities_for_listing(conn, row['id'])
+        features.update(amenity_features)
         
         embedding_features = {f'embedding_{i}': 0.0 for i in range(512)}
         if row['embedding'] is not None:
@@ -218,13 +322,36 @@ def prepare_dataset(output_path: str = "data/training_dataset.parquet"):
         
         rows.append(features)
     
+    conn.close()
+    
     print("Creating DataFrame...")
     dataset_df = pd.DataFrame(rows)
+    
+    # Apply PCA to embeddings
+    print(f"\nApplying PCA to reduce embeddings from 512 to {PCA_N_COMPONENTS} dimensions...")
+    embedding_cols = [f'embedding_{i}' for i in range(512)]
+    embeddings_matrix = dataset_df[embedding_cols].values
+    
+    pca = PCA(n_components=PCA_N_COMPONENTS, random_state=42)
+    embeddings_reduced = pca.fit_transform(embeddings_matrix)
+    
+    print(f"  Explained variance ratio: {pca.explained_variance_ratio_.sum():.2%}")
+    
+    # Save PCA model for inference
+    pca_path = Path("services/ml_inference/models/pca.pkl")
+    pca_path.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(pca, pca_path)
+    print(f"  PCA model saved to: {pca_path}")
+    
+    # Replace 512 embedding columns with 50 PCA components
+    dataset_df = dataset_df.drop(columns=embedding_cols)
+    for i in range(PCA_N_COMPONENTS):
+        dataset_df[f'pca_{i}'] = embeddings_reduced[:, i]
     
     output_file = Path(output_path)
     output_file.parent.mkdir(parents=True, exist_ok=True)
     
-    print(f"Saving dataset to {output_path}...")
+    print(f"\nSaving dataset to {output_path}...")
     dataset_df.to_parquet(output_path, index=False, engine='pyarrow')
     
     print(f"\nDataset saved successfully!")
@@ -235,15 +362,37 @@ def prepare_dataset(output_path: str = "data/training_dataset.parquet"):
     print(dataset_df[['price', 'rating', 'lat', 'lng']].describe())
     print(f"\nFeature columns:")
     feature_cols = [col for col in dataset_df.columns if col not in ['id', 'price']]
-    metadata_features = [c for c in feature_cols if not c.startswith('embedding_')]
-    embedding_features = [c for c in feature_cols if c.startswith('embedding_')]
+    metadata_features = [c for c in feature_cols if not c.startswith('pca_')]
+    pca_features = [c for c in feature_cols if c.startswith('pca_')]
     print(f"  - Metadata features: {len(metadata_features)}")
-    print(f"  - Embedding features: {len(embedding_features)}")
+    print(f"  - PCA embedding features: {len(pca_features)}")
     print(f"\nMetadata features: {metadata_features}")
     
     return dataset_df
 
 if __name__ == "__main__":
-    output_path = sys.argv[1] if len(sys.argv) > 1 else "data/training_dataset.parquet"
-    prepare_dataset(output_path)
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Prepare training dataset from database")
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="data/training_dataset.parquet",
+        help="Output path for dataset"
+    )
+    parser.add_argument(
+        "--db-host",
+        type=str,
+        default="localhost",
+        help="Database host (default: localhost)"
+    )
+    parser.add_argument(
+        "--db-port",
+        type=str,
+        default="5433",
+        help="Database port (default: 5433)"
+    )
+    
+    args = parser.parse_args()
+    prepare_dataset(args.output, db_host=args.db_host, db_port=args.db_port)
 

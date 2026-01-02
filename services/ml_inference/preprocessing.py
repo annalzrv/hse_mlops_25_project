@@ -58,8 +58,8 @@ class Preprocessor:
             X = X.drop(columns=['id'])
         
         categorical_cols = ['city']
-        numerical_cols = [col for col in X.columns if col not in categorical_cols]
         
+        # Handle city encoding
         if 'city' in X.columns:
             X['city'] = X['city'].astype(str)
             if fit:
@@ -72,6 +72,17 @@ class Preprocessor:
                     X['city'] = self.city_encoder.transform(X['city'])
                 except ValueError:
                     X['city'] = 0
+        
+        # If transform (not fit), align columns with training features
+        if not fit and self.feature_names is not None:
+            # Add missing columns with zeros
+            for col in self.feature_names:
+                if col not in X.columns:
+                    X[col] = 0.0
+            # Remove extra columns and reorder
+            X = X[self.feature_names]
+        
+        numerical_cols = [col for col in X.columns if col not in categorical_cols]
         
         if fit:
             X[numerical_cols] = self.scaler.fit_transform(X[numerical_cols])

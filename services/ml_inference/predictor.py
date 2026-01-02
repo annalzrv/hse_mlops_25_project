@@ -17,7 +17,7 @@ class PricePredictor:
         self.preprocessor_path = Path(preprocessor_path)
         self.model = None
         self.preprocessor = None
-        self.model_version = "v1.0"
+        self.model_version = "v3.0"
         self._load_model()
         self._load_preprocessor()
     
@@ -49,13 +49,15 @@ class PricePredictor:
         listing_data: Dict,
         embedding: Optional[np.ndarray] = None,
         city: Optional[str] = None,
-        num_reviews: Optional[int] = None
+        num_reviews: Optional[int] = None,
+        amenities: Optional[set] = None
     ) -> float:
         features_df = prepare_features_from_listing(
             listing_data,
             embedding=embedding,
             city=city,
-            num_reviews=num_reviews
+            num_reviews=num_reviews,
+            amenities=amenities
         )
         
         try:

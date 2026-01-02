@@ -25,7 +25,7 @@ class AirbnbAPIClient:
             "x-rapidapi-key": self.api_key,
             "x-rapidapi-host": self.api_host
         }
-        self.raw_data_dir = Path(os.getenv("DATA_DIR", "/app/data")) / "raw"
+        self.raw_data_dir = Path(os.getenv("DATA_DIR", "/app/data")) / "raw" / "search"
         self.raw_data_dir.mkdir(parents=True, exist_ok=True)
         self.semaphore = asyncio.Semaphore(5)
     

@@ -42,7 +42,13 @@ class DatabaseService:
         try:
             cursor = self.connection.cursor()
             cursor.execute(
-                "SELECT id, price, lat, lng, name, rating, embedding FROM listings WHERE id = %s",
+                """
+                SELECT id, price, lat, lng, name, rating, embedding,
+                       property_type, room_type, person_capacity, bedrooms, beds, bathrooms,
+                       cleanliness_rating, location_rating, value_rating, 
+                       communication_rating, checkin_rating, accuracy_rating, review_count
+                FROM listings WHERE id = %s
+                """,
                 (listing_id,)
             )
             row = cursor.fetchone()
@@ -51,7 +57,10 @@ class DatabaseService:
             if not row:
                 return None
             
-            listing_id_db, price, lat, lng, name, rating, embedding = row
+            (listing_id_db, price, lat, lng, name, rating, embedding,
+             property_type, room_type, person_capacity, bedrooms, beds, bathrooms,
+             cleanliness_rating, location_rating, value_rating,
+             communication_rating, checkin_rating, accuracy_rating, review_count) = row
             
             listing_data = {
                 'id': listing_id_db,
@@ -59,7 +68,21 @@ class DatabaseService:
                 'lat': lat,
                 'lng': lng,
                 'name': name,
-                'rating': rating
+                'rating': rating,
+                # New detailed fields
+                'property_type': property_type,
+                'room_type': room_type,
+                'person_capacity': person_capacity,
+                'bedrooms': bedrooms,
+                'beds': beds,
+                'bathrooms': bathrooms,
+                'cleanliness_rating': cleanliness_rating,
+                'location_rating': location_rating,
+                'value_rating': value_rating,
+                'communication_rating': communication_rating,
+                'checkin_rating': checkin_rating,
+                'accuracy_rating': accuracy_rating,
+                'review_count': review_count
             }
             
             embedding_array = None
@@ -70,15 +93,39 @@ class DatabaseService:
                     import json
                     embedding_array = np.array(json.loads(str(embedding)))
             
+            # Get amenities for this listing
+            amenities = self.get_amenities(listing_id)
+            
             return {
                 'listing': listing_data,
-                'embedding': embedding_array
+                'embedding': embedding_array,
+                'amenities': amenities
             }
         except Exception as e:
             logger.error(f"Error getting listing {listing_id}: {e}")
             if self.connection:
                 self.connection.rollback()
             return None
+    
+    def get_amenities(self, listing_id: str) -> set:
+        """Get amenities for a listing as a set of names"""
+        if not self.connection:
+            self.connect()
+        
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(
+                "SELECT amenity_name FROM listing_amenities WHERE listing_id = %s",
+                (listing_id,)
+            )
+            amenities = {row[0] for row in cursor.fetchall()}
+            cursor.close()
+            return amenities
+        except Exception as e:
+            logger.error(f"Error getting amenities for {listing_id}: {e}")
+            if self.connection:
+                self.connection.rollback()
+            return set()
     
     def save_prediction(
         self,
