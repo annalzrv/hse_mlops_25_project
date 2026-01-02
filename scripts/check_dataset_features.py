@@ -12,6 +12,6 @@ print(f'\nTotal features: {len(df.columns) - 1} (excluding id)')
 print(f'  - Metadata: {len(metadata_cols)}')
 print(f'  - Embeddings: {len([c for c in df.columns if c.startswith("embedding_")])}')
 
-print(f'\n=== Dataset shape ===')
+print('\n=== Dataset shape ===')
 print(f'Rows: {len(df)}, Columns: {len(df.columns)}')
 

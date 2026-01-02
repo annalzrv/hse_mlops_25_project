@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class MLInferenceClient:
     def __init__(self, base_url: Optional[str] = None):
         self.base_url = base_url or os.getenv("ML_INFERENCE_URL", "http://ml_inference:8000")
-    
+
     def health_check(self) -> Dict:
         try:
             response = requests.get(f"{self.base_url}/health", timeout=5)
@@ -18,7 +18,7 @@ class MLInferenceClient:
         except requests.RequestException as e:
             logger.error(f"Health check failed: {e}")
             return {"status": "unhealthy", "error": str(e)}
-    
+
     def predict_by_listing_id(self, listing_id: str) -> Dict:
         try:
             response = requests.post(
@@ -31,7 +31,7 @@ class MLInferenceClient:
         except requests.RequestException as e:
             logger.error(f"Prediction failed for listing {listing_id}: {e}")
             raise
-    
+
     def predict_by_data(
         self,
         listing_data: Dict,
@@ -56,7 +56,7 @@ class MLInferenceClient:
         except requests.RequestException as e:
             logger.error(f"Prediction failed: {e}")
             raise
-    
+
     def get_predictions(self, limit: int = 100) -> List[Dict]:
         try:
             response = requests.get(
@@ -70,10 +70,10 @@ class MLInferenceClient:
         except requests.RequestException as e:
             logger.error(f"Failed to get predictions: {e}")
             return []
-    
+
     def get_swagger_url(self) -> str:
         return f"{self.base_url}/docs"
-    
+
     def get_sample_listings(self, limit: int = 20) -> List[Dict]:
         """Get sample listings for dropdown selection"""
         try:

@@ -1,8 +1,6 @@
-import os
 from pathlib import Path
 from typing import Dict, Optional
 import numpy as np
-import pandas as pd
 from catboost import CatBoostRegressor
 from preprocessing import Preprocessor
 from feature_extractor import prepare_features_from_listing
@@ -17,14 +15,14 @@ class PricePredictor:
         self.preprocessor_path = Path(preprocessor_path)
         self.model = None
         self.preprocessor = None
-        self.model_version = "v3.0"
+        self.model_version = "v4.0"  # Mean+Max+Std embeddings + Optuna-tuned CatBoost + Top 40 features
         self._load_model()
         self._load_preprocessor()
-    
+
     def _load_model(self):
         if not self.model_path.exists():
             raise FileNotFoundError(f"Model file not found: {self.model_path}")
-        
+
         try:
             self.model = CatBoostRegressor()
             self.model.load_model(str(self.model_path))
@@ -32,18 +30,18 @@ class PricePredictor:
         except Exception as e:
             logger.error(f"Error loading model: {e}")
             raise
-    
+
     def _load_preprocessor(self):
         if not self.preprocessor_path.exists():
             raise FileNotFoundError(f"Preprocessor file not found: {self.preprocessor_path}")
-        
+
         try:
             self.preprocessor = Preprocessor.load(str(self.preprocessor_path))
             logger.info(f"Preprocessor loaded from {self.preprocessor_path}")
         except Exception as e:
             logger.error(f"Error loading preprocessor: {e}")
             raise
-    
+
     def predict(
         self,
         listing_data: Dict,
@@ -59,7 +57,7 @@ class PricePredictor:
             num_reviews=num_reviews,
             amenities=amenities
         )
-        
+
         try:
             features_transformed = self.preprocessor.transform(features_df)
             prediction = self.model.predict(features_transformed)
@@ -67,7 +65,7 @@ class PricePredictor:
         except Exception as e:
             logger.error(f"Error during prediction: {e}")
             raise
-    
+
     def get_model_version(self) -> str:
         return self.model_version
 

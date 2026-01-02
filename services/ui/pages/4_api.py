@@ -37,7 +37,7 @@ st.header("API Endpoints")
 with st.expander("GET /health - Health Check", expanded=True):
     st.markdown("""
     **Description:** Check if the ML service is running and healthy.
-    
+
     **Response:**
     ```json
     {
@@ -46,7 +46,7 @@ with st.expander("GET /health - Health Check", expanded=True):
     }
     ```
     """)
-    
+
     if st.button("Test Health Check"):
         result = st.session_state.ml_client.health_check()
         st.json(result)
@@ -54,14 +54,14 @@ with st.expander("GET /health - Health Check", expanded=True):
 with st.expander("POST /predict - Make Prediction"):
     st.markdown("""
     **Description:** Get a price prediction for a listing.
-    
+
     **Option 1: By Listing ID**
     ```json
     {
         "listing_id": "12345678"
     }
     ```
-    
+
     **Option 2: With Custom Data**
     ```json
     {
@@ -76,7 +76,7 @@ with st.expander("POST /predict - Make Prediction"):
         "embedding": [0.1, 0.2, ...]
     }
     ```
-    
+
     **Response:**
     ```json
     {
@@ -90,10 +90,10 @@ with st.expander("POST /predict - Make Prediction"):
 with st.expander("GET /predictions - Get Prediction History"):
     st.markdown("""
     **Description:** Get history of predictions.
-    
+
     **Query Parameters:**
     - `limit` (optional): Maximum number of records (default: 100)
-    
+
     **Response:**
     ```json
     {
@@ -110,7 +110,7 @@ with st.expander("GET /predictions - Get Prediction History"):
     }
     ```
     """)
-    
+
     limit = st.number_input("Limit", min_value=1, max_value=100, value=5)
     if st.button("Test Get Predictions"):
         predictions = st.session_state.ml_client.get_predictions(limit=limit)

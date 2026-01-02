@@ -1,5 +1,4 @@
 import streamlit as st
-import numpy as np
 from utils.ml_client import MLInferenceClient
 from utils.formatters import format_price
 
@@ -28,10 +27,10 @@ sample_listings = st.session_state.sample_listings
 if sample_listings:
     # Create display options
     listing_options = {
-        f"{l['name']} | {l['region']} | ${l['price']:.0f}/night": l['id'] 
+        f"{l['name']} | {l['region']} | ${l['price']:.0f}/night": l['id']
         for l in sample_listings
     }
-    
+
     col1, col2 = st.columns([4, 1])
     with col1:
         selected_display = st.selectbox(
@@ -45,16 +44,16 @@ if sample_listings:
         if st.button("Refresh List", use_container_width=True):
             st.session_state.sample_listings = st.session_state.ml_client.get_sample_listings(limit=30)
             st.rerun()
-    
+
     if selected_display != "-- Select a listing --":
         selected_id = listing_options[selected_display]
-        
+
         if st.button("Get Prediction", key="predict_selected", type="primary", use_container_width=True):
             with st.spinner("Getting prediction..."):
                 try:
                     result = st.session_state.ml_client.predict_by_listing_id(selected_id)
                     st.success(f"Predicted Price: **{format_price(result.get('predicted_price'))}**")
-                    
+
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         st.metric("Predicted Price", format_price(result.get('predicted_price')))
@@ -83,7 +82,7 @@ if predict_by_id and listing_id:
         try:
             result = st.session_state.ml_client.predict_by_listing_id(listing_id)
             st.success(f"Predicted Price: **{format_price(result.get('predicted_price'))}**")
-            
+
             col1, col2 = st.columns(2)
             with col1:
                 st.metric("Predicted Price", format_price(result.get('predicted_price')))
@@ -110,7 +109,7 @@ CITY_COORDS = {
 
 with st.form("custom_prediction_form"):
     col1, col2 = st.columns(2)
-    
+
     with col1:
         city = st.selectbox(
             "City / Area",
@@ -119,14 +118,14 @@ with st.form("custom_prediction_form"):
         )
         rating = st.slider("Rating", min_value=0.0, max_value=5.0, value=4.5, step=0.1)
         num_reviews = st.number_input("Number of Reviews", min_value=0, value=50)
-    
+
     with col2:
         name = st.text_input(
-            "Property Description", 
+            "Property Description",
             placeholder="e.g., Luxury apartment with pool near beach",
             help="Keywords like 'luxury', 'pool', 'beach', 'parking' affect price"
         )
-        
+
         st.markdown("**Property Features** (extracted from description)")
         feat_col1, feat_col2 = st.columns(2)
         with feat_col1:
@@ -135,19 +134,19 @@ with st.form("custom_prediction_form"):
         with feat_col2:
             has_beach = st.checkbox("Beach Access", value=False)
             has_parking = st.checkbox("Parking", value=False)
-    
+
     uploaded_images = st.file_uploader(
         "Upload Property Images (optional) - improves prediction accuracy",
         type=['jpg', 'jpeg', 'png'],
         accept_multiple_files=True
     )
-    
+
     submit = st.form_submit_button("Get Prediction", use_container_width=True, type="primary")
 
 if submit:
     # Get coordinates from city
     lat, lng = CITY_COORDS.get(city, (40.7128, -74.0060))
-    
+
     # Build property name with keywords for feature extraction
     name_parts = [name] if name else []
     if has_luxury:
@@ -158,16 +157,16 @@ if submit:
         name_parts.append("beach")
     if has_parking:
         name_parts.append("parking")
-    
+
     full_name = " ".join(name_parts) if name_parts else "Apartment"
-    
+
     listing_data = {
         "name": full_name,
         "rating": rating,
         "lat": lat,
         "lng": lng
     }
-    
+
     embedding = None
     if uploaded_images:
         with st.spinner("Loading image processor (first time may take a moment)..."):
@@ -179,7 +178,7 @@ if submit:
                 except Exception as e:
                     st.warning(f"Could not load image processor: {e}")
                     st.session_state.image_processor = None
-        
+
         if st.session_state.get('image_processor'):
             with st.spinner("Processing images..."):
                 try:
@@ -188,7 +187,7 @@ if submit:
                     embedding = embedding.tolist() if embedding is not None else None
                 except Exception as e:
                     st.warning(f"Image processing failed: {e}")
-    
+
     with st.spinner("Getting prediction..."):
         try:
             result = st.session_state.ml_client.predict_by_data(
@@ -197,15 +196,15 @@ if submit:
                 city=city,
                 num_reviews=num_reviews
             )
-            
+
             st.success("Prediction Complete!")
-            
+
             col1, col2 = st.columns(2)
             with col1:
                 st.metric("Predicted Price per Night", format_price(result.get('predicted_price')))
             with col2:
                 st.metric("Model Version", result.get('model_version', 'N/A'))
-                
+
         except Exception as e:
             st.error(f"Prediction failed: {str(e)}")
 
