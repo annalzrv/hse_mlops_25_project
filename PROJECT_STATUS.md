@@ -101,6 +101,8 @@ The system is fully operational with all core components deployed and tested. Mo
 | MAE | $27.84 | $27.99 | $114 ± $8 |
 | MAPE | 24.0% | 59.2% | 60.1% ± 4.1% |
 
+**Note:** Current MAPE is limited by small dataset size (711 samples). Model shows signs of overfitting (train MAPE 24% vs validation 59%). Expanding dataset to 5,000+ listings is planned to improve performance.
+
 ### Model Architecture
 - Image Embeddings: Mean+Max+Std aggregation (1536 dims) → PCA to 100 dims
 - Feature Selection: Top 40 features selected from 164 total (79.2% importance)
@@ -175,10 +177,13 @@ data/
 ## Quick Start
 
 ```bash
-# Clone and configure
+# Clone repository
 git clone <repository-url>
 cd project
-cp .env.example .env
+
+# (Optional) Create .env for new data collection
+# cp .env.example .env
+# For running with existing data, .env is not required
 
 # Start all services
 docker-compose up -d

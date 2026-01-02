@@ -27,7 +27,8 @@
 
 **Обработка:**
 - CLIP embeddings (512-мерные векторы) из изображений
-- Mean pooling для агрегации множественных изображений
+- Mean+Max+Std aggregation для множественных изображений (1536-мерный вектор)
+- PCA reduction: 1536 → 100 компонент (81% variance)
 - PostgreSQL + pgvector для хранения и векторного поиска
 
 ---
@@ -67,10 +68,12 @@
 - **Хранение:** 1,000+ листингов с embeddings
 - **Векторный поиск:** < 100ms для топ-10 похожих объектов
 
-### Метрики ML-модели
-- **Model:** CatBoost Regressor
+### Метрики ML-модели (v4.0)
+- **Model:** CatBoost Regressor (Optuna-tuned)
+- **Features:** 40 selected features (PCA embeddings + metadata)
+- **Embeddings:** Mean+Max+Std (1536d) → PCA (100d, 81% variance)
+- **Performance:** Cross-validation MAPE 60.1% ± 4.1%
 - **Время инференса:** < 100ms на запрос
-- **Features:** CLIP embeddings + метаданные
 - **Throughput:** 100+ запросов/минуту
 
 ---
@@ -80,13 +83,17 @@
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌─────────────┐
 │  Airbnb API │────▶│ Data Loader  │────▶│ PostgreSQL  │────▶│ Kafka Topic │
-│             │     │  (CLIP)      │     │  (pgvector) │     │             │
+│ (Search +   │     │ (CLIP +      │     │ (pgvector,  │     │             │
+│  Details)   │     │  Mean+Max+   │     │  vector(1536))│   │             │
+│             │     │  Std, PCA)   │     │             │     │             │
 └─────────────┘     └──────────────┘     └──────┬──────┘     └──────┬──────┘
                                                   │                   │
                                                   ▼                   ▼
                                          ┌──────────────┐     ┌──────────────┐
                                          │ ML Inference │◀────│  Streamlit   │
-                                         │   Service    │     │      UI      │
+                                         │ (CatBoost    │     │      UI      │
+                                         │  v4.0, 40    │     │              │
+                                         │  features)   │     │              │
                                          └──────┬───────┘     └──────────────┘
                                                 │
                                                 ▼
@@ -101,10 +108,10 @@
 ## Статус реализации
 
 ### Все компоненты реализованы
-- Data ingestion pipeline (Airbnb API, CLIP, PostgreSQL)
-- PostgreSQL + pgvector для векторного поиска
+- Data ingestion pipeline (Airbnb Search + Details API, CLIP, Mean+Max+Std, PCA)
+- PostgreSQL + pgvector (vector(1536)) для векторного поиска
 - Kafka для асинхронной обработки
-- ML inference service (CatBoost + FastAPI)
+- ML inference service (CatBoost v4.0 с feature selection + FastAPI)
 - Streamlit UI (инференс, аналитика, история)
 - Grafana мониторинг (дашборды)
 
@@ -113,15 +120,18 @@
 ## Быстрый старт
 
 ```bash
-# 1. Клонировать и настроить
+# 1. Клонировать репозиторий
 git clone <repository-url>
 cd project
-cp .env.example .env
 
-# 2. Запустить все сервисы
+# 2. (Опционально) Создать .env для сбора новых данных
+# cp .env.example .env
+# Для запуска с существующими данными .env не нужен
+
+# 3. Запустить все сервисы
 docker-compose up -d
 
-# 3. Открыть интерфейсы
+# 4. Открыть интерфейсы
 # UI: http://localhost:8501
 # API: http://localhost:8000/docs
 # Grafana: http://localhost:3000 (admin/admin)

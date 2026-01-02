@@ -38,10 +38,11 @@ End-to-end MLOps система для предсказания цен на не
 - Мониторинг изменений на рынке
 
 ### Метрики успеха
-- **Точность предсказаний:** MAPE (Mean Absolute Percentage Error) < 20%
-- **Скорость обработки:** < 5 секунд на одно предсказание
-- **Масштабируемость:** обработка тысяч запросов в день
-- **Покрытие:** поддержка основных рынков недвижимости (NYC, LA, London и др.)
+- **Точность предсказаний:** MAPE 60.1% ± 4.1% (cross-validation, текущая версия v4.0)
+- **Скорость обработки:** < 100ms на одно предсказание
+- **Масштабируемость:** обработка 100+ запросов в минуту
+- **Покрытие:** поддержка основных рынков недвижимости (NYC, LA)
+- **Цель:** улучшение до MAPE < 25% при расширении датасета до 5,000+ листингов
 
 ## Описание проекта
 
@@ -52,13 +53,17 @@ End-to-end MLOps система, которая собирает данные о
 ```mermaid
 graph TB
     subgraph DataCollection [Data Collection Layer]
-        API[Airbnb API] --> DL[Data Loader]
-        DL --> CLIP[CLIP Processor]
-        CLIP --> EMB[Embeddings]
+        API1[Airbnb Search API] --> DL[Data Loader]
+        API2[Airbnb Details API] --> DF[Detail Fetcher]
+        DF --> DL
+        DL --> ID[Image Downloader]
+        ID --> CLIP[CLIP Processor<br/>512-dim per image]
+        CLIP --> AGG[Mean+Max+Std<br/>1536-dim vector]
+        AGG --> PCA[PCA Reduction<br/>100 components]
     end
     
     subgraph Storage [Storage Layer]
-        EMB --> PG[(PostgreSQL + pgvector)]
+        PCA --> PG[(PostgreSQL + pgvector<br/>vector 1536)]
         DL --> PG
         DL --> KF[Kafka]
     end
@@ -67,7 +72,7 @@ graph TB
         KF --> MLC[ML Consumer]
         MLC --> PRED[Predictions]
         PRED --> PG
-        MLS[ML Inference API] --> PG
+        MLS[ML Inference API<br/>CatBoost v4.0<br/>40 features] --> PG
     end
     
     subgraph Frontend [Presentation Layer]
@@ -102,30 +107,22 @@ git clone <repository-url>
 cd project
 ```
 
-2. Создайте файл `.env` на основе `.env.example`:
+2. (Опционально) Создайте файл `.env` на основе `.env.example`:
+
 ```bash
 cp .env.example .env
 ```
 
-3. Заполните `.env` файл:
+**Примечание:** Для запуска проекта с существующими данными `.env` файл не обязателен. Все переменные имеют дефолтные значения в `docker-compose.yml`. `RAPIDAPI_KEY` нужен только если вы хотите собирать новые данные через API.
+
+3. Если нужен сбор данных, заполните в `.env`:
+
 ```env
 RAPIDAPI_KEY=your_rapidapi_key_here
 RAPIDAPI_HOST=airbnb19.p.rapidapi.com
 PLACE_ID=ChIJq0fR1gS8woAR0R4I_XnDx9Y,ChIJ4zPwIdm-woARpyaKDi1M5FA,ChIJ_9Ei1Yq-woAR9XfBG9YrXlA,ChIJGQCRws6kwoARq_Uj_7UKF7Q,ChIJ8dXnU9ekwoAROOxLORAMcwE,ChIJm6deTdekwoARTY_RzhoRms0
 MAX_LISTINGS=4120
 MAX_IMAGES_PER_LISTING=20
-
-POSTGRES_HOST=postgres
-POSTGRES_PORT=5432
-POSTGRES_DB=real_estate
-POSTGRES_USER=mlops
-POSTGRES_PASSWORD=mlops123
-
-KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-KAFKA_TOPIC=new_listings
-
-LOG_LEVEL=INFO
-DATA_DIR=/app/data
 ```
 
 ## Запуск
@@ -204,12 +201,13 @@ project/
 
 ### Image Processor (`image_processor.py`)
 - Resize изображений до 224x224 с сохранением aspect ratio
-- Извлечение CLIP embeddings через `openai/clip-vit-base-patch32`
+- Извлечение CLIP embeddings через `openai/clip-vit-base-patch32` (512-мерные векторы)
 - Поддержка MPS backend для Apple Silicon
 
 ### Embedding Aggregator (`embedding_aggregator.py`)
-- Mean pooling для агрегации эмбеддингов всех изображений
-- Результат: один 512-мерный вектор на объявление
+- Mean+Max+Std aggregation для агрегации эмбеддингов всех изображений
+- Результат: один 1536-мерный вектор на объявление (Mean 512 + Max 512 + Std 512)
+- PCA reduction: 1536 → 100 компонент (81% variance)
 
 ### Database Service (`database.py`)
 - Сохранение метаданных и эмбеддингов в PostgreSQL
@@ -228,8 +226,18 @@ project/
 - `lat`, `lng` (FLOAT) - Координаты
 - `name` (TEXT) - Название
 - `rating` (FLOAT) - Рейтинг
-- `embedding` (vector(512)) - CLIP embedding
+- `embedding` (vector(1536)) - Mean+Max+Std CLIP embedding
+- `city` (VARCHAR) - Город/район
+- `property_type`, `room_type` - Тип недвижимости
+- `person_capacity`, `bedrooms`, `beds`, `bathrooms` - Характеристики
+- `cleanliness_rating`, `location_rating`, `value_rating`, etc. - Детальные рейтинги
+- `review_count` - Количество отзывов
+- `description` (TEXT) - Описание
 - `created_at` (TIMESTAMP) - Время создания
+
+Таблица `listing_amenities`:
+- `listing_id` (VARCHAR) - ID объявления
+- `amenity` (VARCHAR) - Название удобства
 
 Индексы:
 - IVFFlat индекс на embedding для быстрого векторного поиска
@@ -247,8 +255,11 @@ SELECT COUNT(*) FROM listings;
 # Посмотреть примеры
 SELECT id, name, price, rating FROM listings LIMIT 10;
 
-# Проверить embeddings
+# Проверить embeddings (должны быть 1536-мерные)
 SELECT id, array_length(embedding::float[], 1) as embedding_dim FROM listings LIMIT 5;
+
+# Проверить детальные данные
+SELECT id, city, property_type, person_capacity, bedrooms, review_count FROM listings WHERE city IS NOT NULL LIMIT 10;
 ```
 
 ### Kafka
@@ -329,9 +340,9 @@ print(torch.backends.mps.is_available())
 git clone <repository-url>
 cd project
 
-# 2. Создать .env файл
-cp .env.example .env
-# Заполнить RAPIDAPI_KEY
+# 2. (Опционально) Создать .env файл для сбора новых данных
+# cp .env.example .env
+# Для запуска с существующими данными .env не нужен
 
 # 3. Запустить все сервисы
 docker-compose up -d
@@ -343,12 +354,18 @@ open http://localhost:8501
 ## Статус проекта
 
 Все компоненты реализованы:
-- Data Loader с CLIP embeddings
-- PostgreSQL с pgvector
+- Data Loader с CLIP embeddings (Mean+Max+Std aggregation)
+- PostgreSQL с pgvector (vector(1536))
 - Kafka для асинхронной обработки
-- ML Inference Service (CatBoost v4.0)
+- ML Inference Service (CatBoost v4.0 с feature selection и Optuna tuning)
 - Streamlit UI с аналитикой
 - Grafana мониторинг
+
+### Модель v4.0
+- **Embeddings**: Mean+Max+Std (1536 dims) → PCA to 100 dims (81% variance)
+- **Features**: 40 selected features (from 164 total, 79.2% importance)
+- **Hyperparameters**: Optuna-tuned (30 trials)
+- **Performance**: Cross-validation MAPE 60.1% ± 4.1%
 
 Подробный статус: [PROJECT_STATUS.md](PROJECT_STATUS.md)
 
