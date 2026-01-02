@@ -76,6 +76,8 @@ class DatabaseService:
             }
         except Exception as e:
             logger.error(f"Error getting listing {listing_id}: {e}")
+            if self.connection:
+                self.connection.rollback()
             return None
     
     def save_prediction(
@@ -139,5 +141,43 @@ class DatabaseService:
             return predictions
         except Exception as e:
             logger.error(f"Error getting predictions: {e}")
+            return []
+    
+    def get_sample_listings(self, limit: int = 20) -> List[Dict]:
+        """Get sample listings for UI dropdown"""
+        if not self.connection:
+            self.connect()
+        
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(
+                """
+                SELECT id, name, price, rating, lat, lng
+                FROM listings
+                WHERE price IS NOT NULL AND name IS NOT NULL
+                ORDER BY RANDOM()
+                LIMIT %s
+                """,
+                (limit,)
+            )
+            rows = cursor.fetchall()
+            cursor.close()
+            
+            listings = []
+            for row in rows:
+                region = "NYC" if row[5] and row[5] > -100 else "LA"
+                listings.append({
+                    'id': row[0],
+                    'name': row[1][:50] + "..." if len(row[1] or "") > 50 else row[1],
+                    'price': row[2],
+                    'rating': row[3],
+                    'region': region
+                })
+            
+            return listings
+        except Exception as e:
+            logger.error(f"Error getting sample listings: {e}")
+            if self.connection:
+                self.connection.rollback()
             return []
 

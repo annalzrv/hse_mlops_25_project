@@ -133,6 +133,8 @@ async def predict(request: PredictionRequest):
         else:
             raise HTTPException(status_code=400, detail="Either listing_id or listing_data must be provided")
             
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error during prediction: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
@@ -149,6 +151,20 @@ async def get_predictions(limit: int = 100):
     except Exception as e:
         logger.error(f"Error getting predictions: {e}")
         raise HTTPException(status_code=500, detail=f"Error getting predictions: {str(e)}")
+
+
+@app.get("/listings/sample")
+async def get_sample_listings(limit: int = 20):
+    """Get sample listings for UI dropdown selection"""
+    if not db_service:
+        raise HTTPException(status_code=503, detail="Database service not initialized")
+    
+    try:
+        listings = db_service.get_sample_listings(limit=limit)
+        return {"listings": listings, "count": len(listings)}
+    except Exception as e:
+        logger.error(f"Error getting sample listings: {e}")
+        raise HTTPException(status_code=500, detail=f"Error getting sample listings: {str(e)}")
 
 
 if __name__ == "__main__":

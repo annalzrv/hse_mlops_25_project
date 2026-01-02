@@ -18,7 +18,58 @@ if health.get("status") == "healthy":
 else:
     st.sidebar.error("ML Service: Offline")
 
-st.header("Option 1: Predict by Listing ID")
+# Load sample listings for dropdown
+if 'sample_listings' not in st.session_state:
+    st.session_state.sample_listings = st.session_state.ml_client.get_sample_listings(limit=30)
+
+st.header("Option 1: Select from Database")
+
+sample_listings = st.session_state.sample_listings
+if sample_listings:
+    # Create display options
+    listing_options = {
+        f"{l['name']} | {l['region']} | ${l['price']:.0f}/night": l['id'] 
+        for l in sample_listings
+    }
+    
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        selected_display = st.selectbox(
+            "Choose a listing from the database",
+            options=["-- Select a listing --"] + list(listing_options.keys()),
+            key="listing_selector"
+        )
+    with col2:
+        st.write("")
+        st.write("")
+        if st.button("Refresh List", use_container_width=True):
+            st.session_state.sample_listings = st.session_state.ml_client.get_sample_listings(limit=30)
+            st.rerun()
+    
+    if selected_display != "-- Select a listing --":
+        selected_id = listing_options[selected_display]
+        
+        if st.button("Get Prediction", key="predict_selected", type="primary", use_container_width=True):
+            with st.spinner("Getting prediction..."):
+                try:
+                    result = st.session_state.ml_client.predict_by_listing_id(selected_id)
+                    st.success(f"Predicted Price: **{format_price(result.get('predicted_price'))}**")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Predicted Price", format_price(result.get('predicted_price')))
+                    with col2:
+                        st.metric("Listing ID", selected_id)
+                    with col3:
+                        st.metric("Model Version", result.get('model_version', 'N/A'))
+                except Exception as e:
+                    st.error(f"Prediction failed: {str(e)}")
+else:
+    st.info("No listings available. Load data first.")
+
+st.markdown("---")
+
+st.header("Option 2: Enter Listing ID Manually")
 col1, col2 = st.columns([3, 1])
 with col1:
     listing_id = st.text_input("Enter Listing ID from database", placeholder="e.g., 12345678")
@@ -43,7 +94,7 @@ if predict_by_id and listing_id:
 
 st.markdown("---")
 
-st.header("Option 2: Predict with Custom Data")
+st.header("Option 3: Predict with Custom Data")
 
 with st.form("custom_prediction_form"):
     col1, col2, col3 = st.columns(3)

@@ -73,4 +73,19 @@ class MLInferenceClient:
     
     def get_swagger_url(self) -> str:
         return f"{self.base_url}/docs"
+    
+    def get_sample_listings(self, limit: int = 20) -> List[Dict]:
+        """Get sample listings for dropdown selection"""
+        try:
+            response = requests.get(
+                f"{self.base_url}/listings/sample",
+                params={"limit": limit},
+                timeout=10
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data.get("listings", [])
+        except requests.RequestException as e:
+            logger.error(f"Failed to get sample listings: {e}")
+            return []
 
