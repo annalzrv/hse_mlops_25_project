@@ -1,8 +1,8 @@
 # Project Status: Multimodal Real Estate Price Prediction
 
-## Current Status: Production Ready (v3.0)
+## Current Status: Production Ready (v4.0)
 
-The system is fully operational with all core components deployed and tested.
+The system is fully operational with all core components deployed and tested. Model v4.0 uses Mean+Max+Std image aggregation, Optuna-tuned hyperparameters, and feature selection for improved performance.
 
 ---
 
@@ -16,8 +16,9 @@ The system is fully operational with all core components deployed and tested.
 | Detail Fetcher | Operational | Enriches listings via `getPropertyDetails` API |
 | Detail Parser | Operational | Extracts city, ratings, amenities from detailed data |
 | Image Downloader | Operational | Downloads 20+ images per listing from detailed data |
-| CLIP Processor | Operational | Extracts 512-dim visual embeddings |
-| PCA Reducer | Operational | Compresses 512 dims to 50 (97% variance) |
+| CLIP Processor | Operational | Extracts 512-dim visual embeddings per image |
+| Mean+Max+Std Aggregation | Operational | Combines multiple images into 1536-dim vector |
+| PCA Reducer | Operational | Compresses 1536 dims to 100 (81% variance) |
 | Kafka Producer | Operational | Publishes new listings to message queue |
 
 ### Storage Layer
@@ -35,7 +36,7 @@ The system is fully operational with all core components deployed and tested.
 | Component | Status | Description |
 |-----------|--------|-------------|
 | FastAPI Service | Operational | REST API for predictions |
-| CatBoost Model v3.0 | Operational | 115 features (65 meta + 50 PCA) |
+| CatBoost Model v4.0 | Operational | 40 selected features (Optuna-tuned) |
 | PCA Transform | Operational | Applied during inference |
 | Kafka Consumer | Operational | Processes new listings from queue |
 | Health Checks | Operational | Automated monitoring |
@@ -81,35 +82,41 @@ The system is fully operational with all core components deployed and tested.
 |--------|-------|
 | Total Listings | 721 |
 | Listings with Detailed Data | 719 (99.7%) |
-| Listings with City | 714 (99%) |
+| Listings with City | 710 (99.9%) |
 | Regions Covered | 2 (NYC, LA) |
 | Cities Covered | 32 |
-| Features per Listing | 115 |
-| Metadata Features | 65 |
-| PCA Embedding Features | 50 |
+| Features per Listing | 40 (selected from 164) |
+| Metadata Features | 13 |
+| PCA Embedding Features | 27 |
 | Price Range | $33 - $1,930 |
 | Images per Listing | ~20 |
 
 ---
 
-## Model Performance (v3.0)
+## Model Performance (v4.0)
 
-| Metric | Train | Test |
-|--------|-------|------|
-| RMSE | $122.46 | $115.01 |
-| MAE | $78.81 | $76.02 |
-| MAPE | 45.83% | 52.05% |
+| Metric | Train | Validation | Cross-Validation |
+|--------|-------|------------|------------------|
+| RMSE | $54.19 | $172.73 | $194 ± $14 |
+| MAE | $27.84 | $27.99 | $114 ± $8 |
+| MAPE | 24.0% | 59.2% | 60.1% ± 4.1% |
 
-### Feature Importance
-- Metadata: 45.2%
-- PCA Embeddings: 54.8%
+### Model Architecture
+- Image Embeddings: Mean+Max+Std aggregation (1536 dims) → PCA to 100 dims
+- Feature Selection: Top 40 features selected from 164 total (79.2% importance)
+- Hyperparameters: Optuna-tuned (30 trials)
 
-### Top Features
-1. lat (18.9%)
-2. pca_1 (17.1%)
-3. is_private_room (6.7%)
-4. location_rating (4.0%)
-5. distance_to_center_nyc (3.4%)
+### Feature Importance (Top 10)
+1. lat (25.6%)
+2. is_private_room (10.9%)
+3. pca_1 (5.0%)
+4. distance_to_center_nyc (4.5%)
+5. distance_to_center_la (3.4%)
+6. lng (2.2%)
+7. person_capacity (1.7%)
+8. beds (1.5%)
+9. pca_44 (1.4%)
+10. pca_27 (1.4%)
 
 ---
 
@@ -121,9 +128,9 @@ data/
 │   ├── search/      # searchPropertyByPlaceId responses (47 files)
 │   └── details/     # getPropertyDetails responses (721 files)
 ├── images/          # Listing images (~20 per listing)
-├── training_dataset_v3.parquet
-├── train_v3.parquet
-└── test_v3.parquet
+├── training_dataset_v4.parquet
+├── train.parquet
+└── test.parquet
 ```
 
 ---
@@ -131,9 +138,10 @@ data/
 ## Known Limitations
 
 1. **Geographic Coverage**: Currently limited to NYC and LA metro areas
-2. **Model Accuracy**: MAPE ~52%, needs more data for improvement
+2. **Model Accuracy**: CV MAPE ~60%, limited by small dataset (711 samples)
 3. **Real-time Updates**: Data collection is manual, not scheduled
 4. **Image Processing**: CLIP model requires significant memory (~2GB)
+5. **Overfitting**: Train MAPE (24%) much lower than validation (59%), indicating need for more data
 
 ---
 
@@ -141,10 +149,13 @@ data/
 
 ### Phase 1: Stability (Complete)
 - [x] Core infrastructure deployed
-- [x] ML inference operational (v3.0)
+- [x] ML inference operational (v4.0)
 - [x] Detailed data enrichment pipeline
-- [x] PCA embedding reduction
-- [x] City coverage ~99%
+- [x] Mean+Max+Std image aggregation
+- [x] PCA embedding reduction (1536→100)
+- [x] City coverage 99.9%
+- [x] Feature selection (top 40 features)
+- [x] Optuna hyperparameter tuning
 - [x] Monitoring dashboards configured
 
 ### Phase 2: Automation (Next)

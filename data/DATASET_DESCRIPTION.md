@@ -13,13 +13,13 @@
 3. **Масштаб** - тысячи объектов в популярных локациях
 4. **Бизнес-релевантность** - динамическое ценообразование на рынке краткосрочной аренды
 
-### Процесс сбора (v3.0)
+### Процесс сбора (v4.0)
 1. **Data Loader Service** запрашивает листинги через `searchPropertyByPlaceId`
 2. **Detail Fetcher** обогащает данные через `getPropertyDetails` API
 3. **Image Downloader** скачивает до 20+ изображений на каждый листинг (из detailed API)
-4. **CLIP Processor** извлекает 512-мерные визуальные эмбеддинги
-5. **PCA Reduction** сжимает эмбеддинги до 50 компонент (97% variance)
-6. **Mean Pooling** агрегирует эмбеддинги нескольких изображений
+4. **CLIP Processor** извлекает 512-мерные визуальные эмбеддинги для каждого изображения
+5. **Mean+Max+Std Aggregation** комбинирует эмбеддинги в 1536-мерный вектор (Mean 512 + Max 512 + Std 512)
+6. **PCA Reduction** сжимает эмбеддинги до 100 компонент (81% variance)
 7. **PostgreSQL + pgvector** сохраняет данные для обучения и поиска
 
 ### Покрытие регионов
@@ -27,18 +27,18 @@
 - **Los Angeles Area**: West Hollywood, Beverly Hills, Santa Monica, Downtown LA, Marina del Rey
 
 ### Покрытие города
-- **~99%** листингов имеют указанный город (из detailed API)
-- Основные города: Brooklyn (189), New York (109), West Hollywood (73), Santa Monica (70)
+- **99.9%** листингов имеют указанный город (из detailed API)
+- Основные города: Brooklyn (188), New York (109), West Hollywood (73), Santa Monica (67)
 
 ---
 
-## Структура датасета (v3.0)
+## Структура датасета (v4.0)
 
-Датасет сохранен в формате Parquet: `data/training_dataset_v3.parquet`
+Датасет сохранен в формате Parquet: `data/training_dataset_v4.parquet`
 
 ### Статистика
-- **Всего записей:** 713
-- **Всего признаков:** 115 (excluding 'id')
+- **Всего записей:** 711
+- **Всего признаков:** 166 (excluding 'id'), из них используется 40 (feature selection)
 - **Целевая переменная:** `price` (цена за ночь в USD)
 
 ### Столбцы датасета
@@ -100,37 +100,44 @@
 - `name_word_count` (float) - количество слов в названии
 - `has_mention_of_luxury` / `has_mention_of_beach` / `has_mention_of_pool` / `has_mention_of_parking` (float)
 
-#### 4. PCA-сжатые CLIP Embeddings (50 признаков)
+#### 4. PCA-сжатые CLIP Embeddings (100 признаков, используется 27)
 
-- `pca_0` ... `pca_49` (float) - 50-мерный вектор (PCA от 512-мерных CLIP embeddings)
-- **Explained variance:** 97.24%
+- `pca_0` ... `pca_99` (float) - 100-мерный вектор (PCA от 1536-мерных Mean+Max+Std embeddings)
+- **Explained variance:** 81.01%
+- **Aggregation method:** Mean (512d) + Max (512d) + Std (512d) = 1536d → PCA to 100d
 
 ---
 
-## Статистика модели v3.0
+## Статистика модели v4.0
 
-### Важность признаков
-| Группа | Доля важности |
-|--------|---------------|
-| Metadata features | 45.2% |
-| PCA embeddings | 54.8% |
+### Feature Selection
+- **Total features available:** 164
+- **Selected features:** 40 (top features by importance)
+- **Importance captured:** 79.2%
 
-### Топ-10 признаков по важности
-1. `lat` - 18.9%
-2. `pca_1` - 17.1%
-3. `is_private_room` - 6.7%
-4. `pca_11` - 5.0%
-5. `location_rating` - 4.0%
-6. `pca_0` - 3.6%
-7. `distance_to_center_nyc` - 3.4%
-8. `distance_to_center_la` - 3.3%
-9. `person_capacity` - 2.5%
-10. `lng` - 1.9%
+### Важность признаков (Top 10)
+1. `lat` - 25.6%
+2. `is_private_room` - 10.9%
+3. `pca_1` - 5.0%
+4. `distance_to_center_nyc` - 4.5%
+5. `distance_to_center_la` - 3.4%
+6. `lng` - 2.2%
+7. `person_capacity` - 1.7%
+8. `beds` - 1.5%
+9. `pca_44` - 1.4%
+10. `pca_27` - 1.4%
 
-### Метрики качества (Test set)
-- **RMSE:** $115.01
-- **MAE:** $76.02
-- **MAPE:** 52.05%
+### Метрики качества (Cross-Validation)
+- **RMSE:** $194 ± $14
+- **MAE:** $114 ± $8
+- **MAPE:** 60.1% ± 4.1%
+
+### Hyperparameters (Optuna-tuned)
+- **Iterations:** 1386
+- **Learning rate:** 0.0225
+- **Depth:** 6
+- **L2 regularization:** 19.17
+- **Min data in leaf:** 26
 
 ---
 
@@ -142,9 +149,9 @@ data/
 │   ├── search/          # JSON от searchPropertyByPlaceId
 │   └── details/         # JSON от getPropertyDetails (721 файлов)
 ├── images/              # Изображения (~20 на листинг)
-├── training_dataset_v3.parquet
-├── train_v3.parquet
-└── test_v3.parquet
+├── training_dataset_v4.parquet
+├── train.parquet
+└── test.parquet
 ```
 
 ---

@@ -33,7 +33,7 @@ db_service: Optional[DatabaseService] = None
 @app.on_event("startup")
 async def startup_event():
     global predictor, db_service
-    
+
     try:
         predictor = PricePredictor(
             str(MODEL_PATH),
@@ -43,7 +43,7 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Error initializing predictor: {e}")
         raise
-    
+
     try:
         db_service = DatabaseService()
         db_service.connect()
@@ -83,33 +83,33 @@ async def health():
 async def predict(request: PredictionRequest):
     if not predictor:
         raise HTTPException(status_code=503, detail="Predictor not initialized")
-    
+
     try:
         if request.listing_id:
             if not db_service:
                 raise HTTPException(status_code=503, detail="Database service not initialized")
-            
+
             listing_result = db_service.get_listing(request.listing_id)
             if not listing_result:
                 raise HTTPException(status_code=404, detail=f"Listing {request.listing_id} not found")
-            
+
             listing_data = listing_result['listing']
             embedding = listing_result['embedding']
             amenities = listing_result.get('amenities', set())
-            
+
             predicted_price = predictor.predict(
                 listing_data,
                 embedding=embedding,
                 amenities=amenities
             )
-            
+
             if db_service:
                 db_service.save_prediction(
                     request.listing_id,
                     predicted_price,
                     predictor.get_model_version()
                 )
-            
+
             return PredictionResponse(
                 predicted_price=predicted_price,
                 model_version=predictor.get_model_version(),
@@ -119,14 +119,14 @@ async def predict(request: PredictionRequest):
             embedding_array = None
             if request.embedding:
                 embedding_array = np.array(request.embedding)
-            
+
             predicted_price = predictor.predict(
                 request.listing_data,
                 embedding=embedding_array,
                 city=request.city,
                 num_reviews=request.num_reviews
             )
-            
+
             return PredictionResponse(
                 predicted_price=predicted_price,
                 model_version=predictor.get_model_version(),
@@ -134,7 +134,7 @@ async def predict(request: PredictionRequest):
             )
         else:
             raise HTTPException(status_code=400, detail="Either listing_id or listing_data must be provided")
-            
+
     except HTTPException:
         raise
     except Exception as e:
@@ -146,7 +146,7 @@ async def predict(request: PredictionRequest):
 async def get_predictions(limit: int = 100):
     if not db_service:
         raise HTTPException(status_code=503, detail="Database service not initialized")
-    
+
     try:
         predictions = db_service.get_predictions(limit=limit)
         return {"predictions": predictions, "count": len(predictions)}
@@ -160,7 +160,7 @@ async def get_sample_listings(limit: int = 20):
     """Get sample listings for UI dropdown selection"""
     if not db_service:
         raise HTTPException(status_code=503, detail="Database service not initialized")
-    
+
     try:
         listings = db_service.get_sample_listings(limit=limit)
         return {"listings": listings, "count": len(listings)}

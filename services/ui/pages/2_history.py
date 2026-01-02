@@ -31,14 +31,14 @@ with st.spinner("Loading predictions..."):
 
 if predictions:
     df = pd.DataFrame(predictions)
-    
+
     if 'predicted_price' in df.columns:
         df = df[(df['predicted_price'] >= min_price) & (df['predicted_price'] <= max_price)]
-    
+
     if 'created_at' in df.columns:
         df['created_at'] = pd.to_datetime(df['created_at'])
         df = df.sort_values('created_at', ascending=False)
-    
+
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Total Predictions", len(df))
@@ -57,21 +57,21 @@ if predictions:
             st.metric("Max Price", format_price(df['predicted_price'].max()))
         else:
             st.metric("Max Price", "N/A")
-    
+
     st.markdown("---")
-    
+
     if 'predicted_price' in df.columns:
         df['predicted_price_formatted'] = df['predicted_price'].apply(format_price)
-    
+
     display_cols = ['id', 'listing_id', 'predicted_price_formatted', 'created_at', 'model_version']
     display_cols = [c for c in display_cols if c in df.columns]
-    
+
     st.dataframe(
         df[display_cols] if display_cols else df,
         use_container_width=True,
         hide_index=True
     )
-    
+
     csv = df.to_csv(index=False)
     st.download_button(
         label="Download CSV",

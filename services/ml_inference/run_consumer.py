@@ -18,14 +18,14 @@ logger = logging.getLogger(__name__)
 def main():
     MODEL_PATH = Path(os.getenv("MODEL_PATH", "/app/models/model.cbm"))
     PREPROCESSOR_PATH = Path(os.getenv("PREPROCESSOR_PATH", "/app/models/preprocessor.pkl"))
-    
+
     try:
         predictor = PricePredictor(str(MODEL_PATH), str(PREPROCESSOR_PATH))
         logger.info("Predictor loaded successfully")
     except Exception as e:
         logger.error(f"Error loading predictor: {e}")
         raise
-    
+
     try:
         db_service = DatabaseService()
         db_service.connect()
@@ -33,7 +33,7 @@ def main():
     except Exception as e:
         logger.error(f"Error connecting to database: {e}")
         raise
-    
+
     try:
         consumer = KafkaPredictionConsumer(predictor, db_service)
         consumer.start()

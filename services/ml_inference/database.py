@@ -2,7 +2,6 @@ import os
 import psycopg2
 import numpy as np
 from typing import Dict, Optional, List
-from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 import logging
 
@@ -21,7 +20,7 @@ class DatabaseService:
             "password": os.getenv("POSTGRES_PASSWORD", "mlops123")
         }
         self.connection = None
-        
+
     def connect(self):
         try:
             self.connection = psycopg2.connect(**self.conn_params)
@@ -29,23 +28,23 @@ class DatabaseService:
         except Exception as e:
             logger.error(f"Error connecting to PostgreSQL: {e}")
             raise
-    
+
     def close(self):
         if self.connection:
             self.connection.close()
             logger.info("PostgreSQL connection closed")
-    
+
     def get_listing(self, listing_id: str) -> Optional[Dict]:
         if not self.connection:
             self.connect()
-        
+
         try:
             cursor = self.connection.cursor()
             cursor.execute(
                 """
                 SELECT id, price, lat, lng, name, rating, embedding,
                        property_type, room_type, person_capacity, bedrooms, beds, bathrooms,
-                       cleanliness_rating, location_rating, value_rating, 
+                       cleanliness_rating, location_rating, value_rating,
                        communication_rating, checkin_rating, accuracy_rating, review_count
                 FROM listings WHERE id = %s
                 """,
@@ -53,15 +52,15 @@ class DatabaseService:
             )
             row = cursor.fetchone()
             cursor.close()
-            
+
             if not row:
                 return None
-            
+
             (listing_id_db, price, lat, lng, name, rating, embedding,
              property_type, room_type, person_capacity, bedrooms, beds, bathrooms,
              cleanliness_rating, location_rating, value_rating,
              communication_rating, checkin_rating, accuracy_rating, review_count) = row
-            
+
             listing_data = {
                 'id': listing_id_db,
                 'price': price,
@@ -84,7 +83,7 @@ class DatabaseService:
                 'accuracy_rating': accuracy_rating,
                 'review_count': review_count
             }
-            
+
             embedding_array = None
             if embedding is not None:
                 if hasattr(embedding, '__array__'):
@@ -92,10 +91,10 @@ class DatabaseService:
                 else:
                     import json
                     embedding_array = np.array(json.loads(str(embedding)))
-            
+
             # Get amenities for this listing
             amenities = self.get_amenities(listing_id)
-            
+
             return {
                 'listing': listing_data,
                 'embedding': embedding_array,
@@ -106,12 +105,12 @@ class DatabaseService:
             if self.connection:
                 self.connection.rollback()
             return None
-    
+
     def get_amenities(self, listing_id: str) -> set:
         """Get amenities for a listing as a set of names"""
         if not self.connection:
             self.connect()
-        
+
         try:
             cursor = self.connection.cursor()
             cursor.execute(
@@ -126,7 +125,7 @@ class DatabaseService:
             if self.connection:
                 self.connection.rollback()
             return set()
-    
+
     def save_prediction(
         self,
         listing_id: str,
@@ -135,7 +134,7 @@ class DatabaseService:
     ) -> bool:
         if not self.connection:
             self.connect()
-        
+
         try:
             cursor = self.connection.cursor()
             cursor.execute(
@@ -153,11 +152,11 @@ class DatabaseService:
             logger.error(f"Error saving prediction: {e}")
             self.connection.rollback()
             return False
-    
+
     def get_predictions(self, limit: int = 100) -> List[Dict]:
         if not self.connection:
             self.connect()
-        
+
         try:
             cursor = self.connection.cursor()
             cursor.execute(
@@ -171,7 +170,7 @@ class DatabaseService:
             )
             rows = cursor.fetchall()
             cursor.close()
-            
+
             predictions = []
             for row in rows:
                 created_at = row[3]
@@ -184,17 +183,17 @@ class DatabaseService:
                     'created_at': created_at,
                     'model_version': row[4]
                 })
-            
+
             return predictions
         except Exception as e:
             logger.error(f"Error getting predictions: {e}")
             return []
-    
+
     def get_sample_listings(self, limit: int = 20) -> List[Dict]:
         """Get sample listings for UI dropdown"""
         if not self.connection:
             self.connect()
-        
+
         try:
             cursor = self.connection.cursor()
             cursor.execute(
@@ -209,7 +208,7 @@ class DatabaseService:
             )
             rows = cursor.fetchall()
             cursor.close()
-            
+
             listings = []
             for row in rows:
                 region = "NYC" if row[5] and row[5] > -100 else "LA"
@@ -220,7 +219,7 @@ class DatabaseService:
                     'rating': row[3],
                     'region': region
                 })
-            
+
             return listings
         except Exception as e:
             logger.error(f"Error getting sample listings: {e}")
