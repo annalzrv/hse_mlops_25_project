@@ -19,7 +19,7 @@ CREATE INDEX IF NOT EXISTS listings_location_idx ON listings(lat, lng);
 
 CREATE TABLE IF NOT EXISTS predictions (
     id SERIAL PRIMARY KEY,
-    listing_id VARCHAR(255) REFERENCES listings(id),
+    listing_id VARCHAR(255),
     predicted_price FLOAT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     model_version VARCHAR(50) DEFAULT 'v1.0'

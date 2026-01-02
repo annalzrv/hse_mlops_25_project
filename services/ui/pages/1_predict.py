@@ -96,23 +96,48 @@ st.markdown("---")
 
 st.header("Option 3: Predict with Custom Data")
 
+# City coordinates mapping
+CITY_COORDS = {
+    "Manhattan": (40.7831, -73.9712),
+    "Brooklyn": (40.6782, -73.9442),
+    "Queens": (40.7282, -73.7949),
+    "New York (Other)": (40.7128, -74.0060),
+    "Los Angeles": (34.0522, -118.2437),
+    "Beverly Hills": (34.0736, -118.4004),
+    "Santa Monica": (34.0195, -118.4912),
+    "West Hollywood": (34.0900, -118.3617),
+}
+
 with st.form("custom_prediction_form"):
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
-        name = st.text_input("Property Name", placeholder="Luxury apartment in downtown")
-        rating = st.number_input("Rating", min_value=0.0, max_value=5.0, value=4.0, step=0.1)
+        city = st.selectbox(
+            "City / Area",
+            options=list(CITY_COORDS.keys()),
+            help="Location affects price significantly"
+        )
+        rating = st.slider("Rating", min_value=0.0, max_value=5.0, value=4.5, step=0.1)
+        num_reviews = st.number_input("Number of Reviews", min_value=0, value=50)
     
     with col2:
-        lat = st.number_input("Latitude", min_value=-90.0, max_value=90.0, value=40.7128, step=0.0001, format="%.4f")
-        lng = st.number_input("Longitude", min_value=-180.0, max_value=180.0, value=-74.0060, step=0.0001, format="%.4f")
-    
-    with col3:
-        city = st.selectbox("City", ["Unknown", "Manhattan", "Brooklyn", "Queens", "Los Angeles", "Beverly Hills", "Santa Monica"])
-        num_reviews = st.number_input("Number of Reviews", min_value=0, value=10)
+        name = st.text_input(
+            "Property Description", 
+            placeholder="e.g., Luxury apartment with pool near beach",
+            help="Keywords like 'luxury', 'pool', 'beach', 'parking' affect price"
+        )
+        
+        st.markdown("**Property Features** (extracted from description)")
+        feat_col1, feat_col2 = st.columns(2)
+        with feat_col1:
+            has_luxury = st.checkbox("Luxury/Premium", value=False)
+            has_pool = st.checkbox("Pool", value=False)
+        with feat_col2:
+            has_beach = st.checkbox("Beach Access", value=False)
+            has_parking = st.checkbox("Parking", value=False)
     
     uploaded_images = st.file_uploader(
-        "Upload Property Images (optional)",
+        "Upload Property Images (optional) - improves prediction accuracy",
         type=['jpg', 'jpeg', 'png'],
         accept_multiple_files=True
     )
@@ -120,8 +145,24 @@ with st.form("custom_prediction_form"):
     submit = st.form_submit_button("Get Prediction", use_container_width=True, type="primary")
 
 if submit:
+    # Get coordinates from city
+    lat, lng = CITY_COORDS.get(city, (40.7128, -74.0060))
+    
+    # Build property name with keywords for feature extraction
+    name_parts = [name] if name else []
+    if has_luxury:
+        name_parts.append("luxury")
+    if has_pool:
+        name_parts.append("pool")
+    if has_beach:
+        name_parts.append("beach")
+    if has_parking:
+        name_parts.append("parking")
+    
+    full_name = " ".join(name_parts) if name_parts else "Apartment"
+    
     listing_data = {
-        "name": name,
+        "name": full_name,
         "rating": rating,
         "lat": lat,
         "lng": lng
