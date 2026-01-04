@@ -143,70 +143,80 @@ with st.form("custom_prediction_form"):
 
     submit = st.form_submit_button("Get Prediction", use_container_width=True, type="primary")
 
-if submit:
-    # Get coordinates from city
-    lat, lng = CITY_COORDS.get(city, (40.7128, -74.0060))
+    # Process form submission inside form context where all variables are available
+    if submit:
+        # Get coordinates from city
+        lat, lng = CITY_COORDS.get(city, (40.7128, -74.0060))
 
-    # Build property name with keywords for feature extraction
-    name_parts = [name] if name else []
-    if has_luxury:
-        name_parts.append("luxury")
-    if has_pool:
-        name_parts.append("pool")
-    if has_beach:
-        name_parts.append("beach")
-    if has_parking:
-        name_parts.append("parking")
+        # Build property name with keywords for feature extraction
+        name_parts = [name] if name else []
+        if has_luxury:
+            name_parts.append("luxury")
+        if has_pool:
+            name_parts.append("pool")
+        if has_beach:
+            name_parts.append("beach")
+        if has_parking:
+            name_parts.append("parking")
 
-    full_name = " ".join(name_parts) if name_parts else "Apartment"
+        full_name = " ".join(name_parts) if name_parts else "Apartment"
 
-    listing_data = {
-        "name": full_name,
-        "rating": rating,
-        "lat": lat,
-        "lng": lng
-    }
+        listing_data = {
+            "name": full_name,
+            "rating": rating,
+            "lat": lat,
+            "lng": lng
+        }
 
-    embedding = None
-    if uploaded_images:
-        with st.spinner("Loading image processor (first time may take a moment)..."):
-            # Lazy load ImageProcessor only when images are uploaded
-            if 'image_processor' not in st.session_state:
-                try:
-                    from utils.image_processor import ImageProcessor
-                    st.session_state.image_processor = ImageProcessor()
-                except Exception as e:
-                    st.warning(f"Could not load image processor: {e}")
-                    st.session_state.image_processor = None
+        embedding = None
+        if uploaded_images:
+            with st.spinner("Loading image processor (first time may take a moment)..."):
+                # Lazy load ImageProcessor only when images are uploaded
+                if 'image_processor' not in st.session_state:
+                    try:
+                        from utils.image_processor import ImageProcessor
+                        st.session_state.image_processor = ImageProcessor()
+                    except Exception as e:
+                        st.warning(f"Could not load image processor: {e}")
+                        st.session_state.image_processor = None
 
-        if st.session_state.get('image_processor'):
-            with st.spinner("Processing images..."):
-                try:
-                    image_bytes = [f.read() for f in uploaded_images]
-                    embedding = st.session_state.image_processor.process_images(image_bytes)
-                    embedding = embedding.tolist() if embedding is not None else None
-                except Exception as e:
-                    st.warning(f"Image processing failed: {e}")
+            if st.session_state.get('image_processor'):
+                with st.spinner("Processing images..."):
+                    try:
+                        # Read file bytes immediately while files are available
+                        # Files from file_uploader can only be read once per form submission
+                        image_bytes = []
+                        for uploaded_file in uploaded_images:
+                            # Read the file content
+                            uploaded_file.seek(0)  # Ensure we're at the start
+                            file_bytes = uploaded_file.read()
+                            image_bytes.append(file_bytes)
+                        
+                        embedding = st.session_state.image_processor.process_images(image_bytes)
+                        embedding = embedding.tolist() if embedding is not None else None
+                    except Exception as e:
+                        st.warning(f"Image processing failed: {e}")
 
-    with st.spinner("Getting prediction..."):
-        try:
-            result = st.session_state.ml_client.predict_by_data(
-                listing_data=listing_data,
-                embedding=embedding,
-                city=city,
-                num_reviews=num_reviews
-            )
+        with st.spinner("Getting prediction..."):
+            try:
+                result = st.session_state.ml_client.predict_by_data(
+                    listing_data=listing_data,
+                    embedding=embedding,
+                    city=city,
+                    num_reviews=num_reviews
+                )
 
-            st.success("Prediction Complete!")
+                # Display result immediately inside form
+                st.success("Prediction Complete!")
 
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Predicted Price per Night", format_price(result.get('predicted_price')))
-            with col2:
-                st.metric("Model Version", result.get('model_version', 'N/A'))
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Predicted Price per Night", format_price(result.get('predicted_price')))
+                with col2:
+                    st.metric("Model Version", result.get('model_version', 'N/A'))
 
-        except Exception as e:
-            st.error(f"Prediction failed: {str(e)}")
+            except Exception as e:
+                st.error(f"Prediction failed: {str(e)}")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### API Documentation")
