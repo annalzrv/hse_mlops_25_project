@@ -100,11 +100,7 @@ graph TB
 
 ## Установка
 
-1. Клонируйте репозиторий:
-```bash
-git clone <repository-url>
-cd project
-```
+1. Клонируйте репозиторий
 
 2. (Опционально) Создайте файл `.env` на основе `.env.example`:
 
@@ -128,11 +124,32 @@ MAX_IMAGES_PER_LISTING=20
 
 ### Через Docker Compose (рекомендуется)
 
-```bash
+Для запуска проекта с существующими данными:
+sh
+# Запустить все сервисы (UI, ML API, Grafana, БД, Kafka)
+docker-compose up -d
+
+# Проверить статус
+docker-compose ps
+
+# Открыть интерфейсы
+# UI: http://localhost:8501
+# API: http://localhost:8000/docs
+# Grafana: http://localhost:3000 (admin/admin)
+
+### Сбор новых данных (опционально)
+
+Если нужно собрать новые данные через Airbnb API:
+
+# 1. Убедитесь что .env файл содержит RAPIDAPI_KEY
+# 2. Запустите инфраструктуру
 docker-compose up -d postgres zookeeper kafka
-# Подождите пока сервисы запустятся
+# Подождите пока сервисы запустятся (30-60 секунд)
+# 3. Запустите data loader (будет собирать данные и обрабатывать изображения)
 docker-compose up data_loader
-```
+
+**Примечание:** Сбор данных может занять много времени (20-30 минут для 240 объявлений). Для проверки проекта это не требуется - используйте существующие данные в БД.
+
 
 ### Локальный запуск (Apple Silicon)
 
@@ -146,6 +163,12 @@ pip install -r requirements.txt
 docker-compose up -d postgres zookeeper kafka
 ```
 
+Or just this to make sure grafana works too
+```bash
+docker-compose up -d 
+```
+
+# Для сбора данных
 3. Запустите data loader локально:
 ```bash
 cd services/data_loader
