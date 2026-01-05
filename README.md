@@ -125,7 +125,8 @@ MAX_IMAGES_PER_LISTING=20
 ### Через Docker Compose (рекомендуется)
 
 Для запуска проекта с существующими данными:
-sh
+
+```bash
 # Запустить все сервисы (UI, ML API, Grafana, БД, Kafka)
 docker-compose up -d
 
@@ -136,17 +137,20 @@ docker-compose ps
 # UI: http://localhost:8501
 # API: http://localhost:8000/docs
 # Grafana: http://localhost:3000 (admin/admin)
+```
 
 ### Сбор новых данных (опционально)
 
 Если нужно собрать новые данные через Airbnb API:
 
+```bash
 # 1. Убедитесь что .env файл содержит RAPIDAPI_KEY
 # 2. Запустите инфраструктуру
 docker-compose up -d postgres zookeeper kafka
 # Подождите пока сервисы запустятся (30-60 секунд)
 # 3. Запустите data loader (будет собирать данные и обрабатывать изображения)
 docker-compose up data_loader
+```
 
 **Примечание:** Сбор данных может занять много времени (20-30 минут для 240 объявлений). Для проверки проекта это не требуется - используйте существующие данные в БД.
 
@@ -163,13 +167,12 @@ pip install -r requirements.txt
 docker-compose up -d postgres zookeeper kafka
 ```
 
-Or just this to make sure grafana works too
+**Или** запустите все сервисы (включая Grafana):
 ```bash
-docker-compose up -d 
+docker-compose up -d
 ```
 
-# Для сбора данных
-3. Запустите data loader локально:
+3. Для сбора данных запустите data loader локально:
 ```bash
 cd services/data_loader
 python main.py
