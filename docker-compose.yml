@@ -91,7 +91,7 @@ services:
     environment:
       - PGPASSWORD=${POSTGRES_PASSWORD:-mlops123}
     command: ["/bin/bash", "/scripts/auto_load_seed_data.sh"]
-    restart: on-failure
+    restart: "no"
 
   data_loader:
     build: ./services/data_loader

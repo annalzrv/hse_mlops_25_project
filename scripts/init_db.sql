@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS listings (
     accuracy_rating FLOAT,
     review_count INT,
     description TEXT,
+    city VARCHAR(100),
     details_fetched_at TIMESTAMP
 );
 
