@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS listings (
     lng FLOAT,
     name TEXT,
     rating FLOAT,
-    embedding vector(512),
+    embedding vector(1536),
     created_at TIMESTAMP DEFAULT NOW(),
     -- New detailed fields (Phase 2)
     property_type VARCHAR(100),
