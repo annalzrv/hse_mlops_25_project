@@ -143,6 +143,7 @@ docker-compose ps
 **Примечание:** 
 - Seed данные (721 listings, 1383 predictions, 16200 amenities) загружаются автоматически при первом запуске через сервис `seed-data-loader`
 - Seed данные не включают embeddings (слишком большие для git). Сервис работает с метаданными, embeddings опциональны и генерируются при необходимости
+- Если данные не загрузились, проверьте логи: `docker-compose logs seed-data-loader`
 - Если нужно перезагрузить данные, удалите volume: `docker-compose down -v && docker-compose up -d`
 
 ### Сбор новых данных (опционально)
