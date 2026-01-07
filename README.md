@@ -142,8 +142,10 @@ docker-compose ps
 
 **Примечание:** 
 - Seed данные (721 listings, 1383 predictions, 16200 amenities) загружаются автоматически при первом запуске через сервис `seed-data-loader`
+- ML модели (model.cbm, preprocessor.pkl, pca.pkl) включены в репозиторий и автоматически копируются в контейнер
 - Seed данные не включают embeddings (слишком большие для git). Сервис работает с метаданными, embeddings опциональны и генерируются при необходимости
 - Если данные не загрузились, проверьте логи: `docker-compose logs seed-data-loader`
+- Если ml_inference не запускается, проверьте логи: `docker-compose logs ml_inference`
 - Если нужно перезагрузить данные, удалите volume: `docker-compose down -v && docker-compose up -d`
 
 ### Сбор новых данных (опционально)
