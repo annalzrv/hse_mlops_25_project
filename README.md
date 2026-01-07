@@ -127,12 +127,15 @@ MAX_IMAGES_PER_LISTING=20
 Для запуска проекта с существующими данными:
 
 ```bash
-# Запустить все сервисы (UI, ML API, Grafana, БД, Kafka)
-# Seed данные загрузятся автоматически при первом запуске
-docker-compose up -d
+# Собрать образы и запустить все сервисы
+# Используйте --build чтобы гарантировать пересборку образов с моделями
+docker-compose up -d --build
 
-# Подождать пока все сервисы запустятся (30-60 секунд)
+# Подождать пока все сервисы запустятся (60-90 секунд)
 docker-compose ps
+
+# Проверить статус ml_inference (должен быть healthy)
+docker-compose ps ml_inference
 
 # Открыть интерфейсы
 # UI: http://localhost:8501
@@ -143,10 +146,26 @@ docker-compose ps
 **Примечание:** 
 - Seed данные (721 listings, 1383 predictions, 16200 amenities) загружаются автоматически при первом запуске через сервис `seed-data-loader`
 - ML модели (model.cbm, preprocessor.pkl, pca.pkl) включены в репозиторий и автоматически копируются в контейнер
-- Seed данные не включают embeddings (слишком большие для git). Сервис работает с метаданными, embeddings опциональны и генерируются при необходимости
-- Если данные не загрузились, проверьте логи: `docker-compose logs seed-data-loader`
-- Если ml_inference не запускается, проверьте логи: `docker-compose logs ml_inference`
-- Если нужно перезагрузить данные, удалите volume: `docker-compose down -v && docker-compose up -d`
+- Seed данные не включают embeddings (слишком большие для git). Сервис работает с метаданными
+
+**Troubleshooting:**
+
+Если Listing Analytics пустой или данные не загрузились:
+```bash
+# Полный сброс и перезапуск
+docker-compose down -v
+docker-compose up -d --build
+
+# Проверить что данные загрузились
+docker-compose logs seed-data-loader
+docker-compose exec postgres psql -U mlops -d real_estate -c "SELECT COUNT(*) FROM listings;"
+# Должно показать 721
+```
+
+Если ml_inference не запускается:
+```bash
+docker-compose logs ml_inference
+```
 
 ### Сбор новых данных (опционально)
 
