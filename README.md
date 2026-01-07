@@ -127,22 +127,23 @@ MAX_IMAGES_PER_LISTING=20
 Для запуска проекта с существующими данными:
 
 ```bash
-# 1. Запустить все сервисы (UI, ML API, Grafana, БД, Kafka)
+# Запустить все сервисы (UI, ML API, Grafana, БД, Kafka)
+# Seed данные загрузятся автоматически при первом запуске
 docker-compose up -d
 
-# 2. Подождать пока PostgreSQL будет готов (30-60 секунд)
+# Подождать пока все сервисы запустятся (30-60 секунд)
 docker-compose ps
 
-# 3. Загрузить seed данные (721 listings, 1383 predictions, 16200 amenities)
-./scripts/load_seed_data.sh
-
-# 4. Открыть интерфейсы
+# Открыть интерфейсы
 # UI: http://localhost:8501
 # API: http://localhost:8000/docs
 # Grafana: http://localhost:3000 (admin/admin)
 ```
 
-**Примечание:** Seed данные не включают embeddings (слишком большие для git). Сервис работает с метаданными, embeddings опциональны и генерируются при необходимости.
+**Примечание:** 
+- Seed данные (721 listings, 1383 predictions, 16200 amenities) загружаются автоматически при первом запуске через сервис `seed-data-loader`
+- Seed данные не включают embeddings (слишком большие для git). Сервис работает с метаданными, embeddings опциональны и генерируются при необходимости
+- Если нужно перезагрузить данные, удалите volume: `docker-compose down -v && docker-compose up -d`
 
 ### Сбор новых данных (опционально)
 
