@@ -11,6 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./scripts:/scripts:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlops}"]
       interval: 5s
@@ -76,6 +77,21 @@ services:
       echo 'Topics created:'
       kafka-topics --bootstrap-server kafka:9092 --list
       "
+
+  seed-data-loader:
+    image: pgvector/pgvector:pg16
+    container_name: real_estate_seed_loader
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./scripts:/scripts
+    networks:
+      - real_estate_network
+    environment:
+      - PGPASSWORD=${POSTGRES_PASSWORD:-mlops123}
+    command: ["/bin/bash", "/scripts/auto_load_seed_data.sh"]
+    restart: "no"
 
   data_loader:
     build: ./services/data_loader
