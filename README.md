@@ -151,16 +151,35 @@ docker-compose ps ml_inference
 **Troubleshooting:**
 
 Если Listing Analytics пустой или данные не загрузились:
-```bash
-# Полный сброс и перезапуск
-docker-compose down -v
-docker-compose up -d --build
 
-# Проверить что данные загрузились
-docker-compose logs seed-data-loader
-docker-compose exec postgres psql -U mlops -d real_estate -c "SELECT COUNT(*) FROM listings;"
-# Должно показать 721
-```
+1. **Убедитесь что код обновлен:**
+   ```bash
+   git pull origin main
+   ```
+
+2. **Полный сброс и перезапуск:**
+   ```bash
+   docker-compose down -v
+   docker-compose up -d --build
+   ```
+
+3. **Проверить логи seed-data-loader:**
+   ```bash
+   docker-compose logs seed-data-loader
+   ```
+   Должно быть: `✓ Seed data loaded successfully!` и `Listings: 721`
+
+4. **Проверить данные в БД:**
+   ```bash
+   docker-compose exec postgres psql -U mlops -d real_estate -c "SELECT COUNT(*) FROM listings WHERE price IS NOT NULL;"
+   ```
+   Должно показать `721`
+
+5. **Если данные все еще не загрузились:**
+   ```bash
+   # Запустить seed-data-loader вручную
+   docker-compose run --rm seed-data-loader /bin/bash /scripts/auto_load_seed_data.sh
+   ```
 
 Если ml_inference не запускается:
 ```bash
