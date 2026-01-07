@@ -91,7 +91,7 @@ services:
     environment:
       - PGPASSWORD=${POSTGRES_PASSWORD:-mlops123}
     command: ["/bin/bash", "/scripts/auto_load_seed_data.sh"]
-    restart: "no"
+    restart: on-failure
 
   data_loader:
     build: ./services/data_loader
@@ -142,6 +142,12 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - MODEL_PATH=/app/models/model.cbm
       - PREPROCESSOR_PATH=/app/models/preprocessor.pkl
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - real_estate_network
 
@@ -176,7 +182,10 @@ services:
       postgres:
         condition: service_healthy
       ml_inference:
-        condition: service_started
+        condition: service_healthy
+      seed-data-loader:
+        condition: service_completed_successfully
+    restart: unless-stopped
     ports:
       - "8501:8501"
     environment:
