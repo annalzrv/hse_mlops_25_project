@@ -1,4 +1,4 @@
-id,price,lat,lng,name,rating,property_type,room_type,person_capacity,bedrooms,beds,bathrooms,cleanliness_rating,location_rating,value_rating,communication_rating,checkin_rating,accuracy_rating,review_count,coalesce,coalesce,created_at
+id,price,lat,lng,name,rating,property_type,room_type,person_capacity,bedrooms,beds,bathrooms,cleanliness_rating,location_rating,value_rating,communication_rating,checkin_rating,accuracy_rating,review_count,description,city,created_at
 1083605109713339980,95.2,40.73369,-73.85629,NYC Studio Masterpiece,,Entire guest suite,Entire home/apt,2,1,1,1,4.99,4.83,4.87,4.94,4.96,4.97,93,"",New York,2025-12-31 21:59:34.241893
 15783071,61.8,40.78802,-74.01629,Amazing room / Nice and clean room,,Private room in home,Private room,1,1,1,1,4.93,4.64,4.87,4.81,4.93,4.85,379,"",West New York,2025-12-31 17:53:50.186742
 19086522,70.2,40.77707,-74.01696,private room,,Private room in rental unit,Private room,2,1,1,1,4.9,4.75,4.8,4.91,4.87,4.89,89,"",Weehawken,2025-12-31 21:58:56.438384
