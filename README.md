@@ -146,10 +146,26 @@ docker-compose ps ml_inference
 **Примечание:** 
 - Seed данные (721 listings, 1383 predictions, 16200 amenities) загружаются автоматически при первом запуске через сервис `seed-data-loader`
 - ML модели (model.cbm, preprocessor.pkl, pca.pkl) включены в репозиторий и автоматически копируются в контейнер
-- Seed данные не включают embeddings (слишком большие для git). Сервис работает с метаданными, embeddings опциональны и генерируются при необходимости
-- Если данные не загрузились, проверьте логи: `docker-compose logs seed-data-loader`
-- Если ml_inference не запускается, проверьте логи: `docker-compose logs ml_inference`
-- Если нужно перезагрузить данные, удалите volume: `docker-compose down -v && docker-compose up -d`
+- Seed данные не включают embeddings (слишком большие для git). Сервис работает с метаданными
+
+**Troubleshooting:**
+
+Если Listing Analytics пустой или данные не загрузились:
+```bash
+# Полный сброс и перезапуск
+docker-compose down -v
+docker-compose up -d --build
+
+# Проверить что данные загрузились
+docker-compose logs seed-data-loader
+docker-compose exec postgres psql -U mlops -d real_estate -c "SELECT COUNT(*) FROM listings;"
+# Должно показать 721
+```
+
+Если ml_inference не запускается:
+```bash
+docker-compose logs ml_inference
+```
 
 ### Сбор новых данных (опционально)
 
