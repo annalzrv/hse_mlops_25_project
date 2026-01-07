@@ -33,6 +33,7 @@ models/
 
 *.csv
 !*.csv.example
+!scripts/*_data.csv
 
 # CatBoost training artifacts
 **/catboost_info/
