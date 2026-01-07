@@ -24,8 +24,12 @@ data/raw/
 
 models/
 *.pkl
+!services/ml_inference/models/preprocessor.pkl
+!services/ml_inference/models/pca.pkl
 *.pt
 *.pth
+*.cbm
+!services/ml_inference/models/model.cbm
 
 .DS_Store
 .vscode/
